@@ -1,0 +1,45 @@
+{
+  "name": "aikido-video-library",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "dev:web": "ng serve",
+    "dev:api": "bun --watch run server/index.ts",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run server/db/migrate.ts",
+    "auth:generate": "bunx @better-auth/cli generate --output server/db/auth-schema.ts"
+  },
+  "private": true,
+  "packageManager": "bun@1.3.14",
+  "dependencies": {
+    "@angular/common": "^21.2.0",
+    "@angular/compiler": "^21.2.0",
+    "@angular/core": "^21.2.0",
+    "@angular/forms": "^21.2.0",
+    "@angular/platform-browser": "^21.2.0",
+    "@angular/router": "^21.2.0",
+    "better-auth": "^1.6.19",
+    "drizzle-orm": "^0.45.2",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.2.15",
+    "@angular/cli": "^21.2.15",
+    "@angular/compiler-cli": "^21.2.0",
+    "@tailwindcss/postcss": "^4.3.1",
+    "@types/bun": "^1.3.14",
+    "drizzle-kit": "^0.31.10",
+    "jsdom": "^28.0.0",
+    "postcss": "^8.5.15",
+    "prettier": "^3.8.1",
+    "tailwindcss": "^4.3.1",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
+  }
+}

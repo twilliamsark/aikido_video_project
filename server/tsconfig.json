@@ -1,0 +1,18 @@
+{
+  /* TypeScript config for the Bun server, separate from the Angular app so
+     Bun/Node globals and bun:sqlite types don't leak into the browser build. */
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "types": ["bun"],
+    "lib": ["ESNext"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": false,
+    "esModuleInterop": true
+  },
+  "include": ["**/*.ts", "../drizzle.config.ts"]
+}

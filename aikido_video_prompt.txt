@@ -1,0 +1,32 @@
+I'm building an "Aikido Video Library" web application.
+
+In this app, teachers will be able to create entries for a video and point those entries at a YouTube URL.  The teacher will be able to create a video description, created via a rich text editor (TipTap).
+
+Students will have view only access to the video entries and will be able to play the entries via an embedded YouTube player.
+
+In detail, students are guest (unauthenticated) users who will be able to:
+- use a filterable and sortable list view to browse the video entries
+- the filter will consider any text in either the video title, keywords, or video description
+
+In detail, authenticated teachers will be able to:
+- create, view, update and delete video entries
+- video entries will have any number of keywords associated with them
+- share a video entry (via url) and also stop sharing
+-- this should be handled with a video sharing model with an active status
+- a teacher can create a pre-defined filter and share or unshare that url.
+-- this should be handled with a video sharing list filter model with an active status.  this model will also have a list description that the user can enter via a rich text editor (TipTap)
+
+I'll build the app using Angular 21 with Bun & TypeScript.  For styling, we will use TailwindCSS.
+
+Authentication will be implemented via the better-auth library.
+The rich text editor will be implemented using the TipTap library.
+We will provide basic rich text formatting for the video description.
+- Bold, Italic
+- 3 Heading Levels + Normal Text
+- Bullet point lists
+- Inline code and code snippets
+- Horizontal separator lines
+
+The data will be stored as JSON in a SQLite database.  I'll use Bun's build-in SQLite client with the sequilize library.
+
+From this please create me a technical specification document which I can use as a foundatino to then build this application.
