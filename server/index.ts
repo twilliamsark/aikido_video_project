@@ -1,67 +1,15 @@
 /**
- * Bun HTTP server entry (TECHNICAL_SPEC.md §3, §7).
- *
- * Mounts better-auth at /api/auth/*, exposes a health check, and dispatches the
- * teacher REST surface to per-resource route handlers. Public (guest) routes are
- * added in a later milestone.
+ * Bun HTTP server entry (TECHNICAL_SPEC.md §3). Wires the request handler to
+ * Bun.serve. The handler itself lives in app.ts so it can be tested directly.
  */
-import { auth } from './auth';
+import { handleRequest } from './app';
 import { env } from './env';
-import { error, HttpError, json, withCors } from './lib/http';
-import { handleVideoRoutes } from './routes/videos';
-import { handleKeywordRoutes } from './routes/keywords';
-import { handleMeRoute } from './routes/me';
-import { handlePublicRoutes } from './routes/public';
-import { handleListRoutes } from './routes/lists';
 
-type RouteHandler = (req: Request, url: URL) => Promise<Response | null>;
+// Refuse to boot in production with the insecure development secret (§9).
+if (env.isProduction && env.authSecret === 'dev-insecure-secret-change-me') {
+  throw new Error('BETTER_AUTH_SECRET must be set to a strong value in production');
+}
 
-const routes: RouteHandler[] = [
-  handlePublicRoutes,
-  handleMeRoute,
-  handleVideoRoutes,
-  handleListRoutes,
-  handleKeywordRoutes,
-];
-
-const server = Bun.serve({
-  port: env.port,
-  async fetch(req) {
-    const url = new URL(req.url);
-
-    // CORS preflight for browser clients sending credentials.
-    if (req.method === 'OPTIONS') {
-      return withCors(new Response(null, { status: 204 }));
-    }
-
-    // Health check.
-    if (url.pathname === '/api/health') {
-      return json({ status: 'ok', time: new Date().toISOString() });
-    }
-
-    // better-auth owns everything under /api/auth/*.
-    if (url.pathname.startsWith('/api/auth')) {
-      return withCors(await auth.handler(req));
-    }
-
-    try {
-      for (const route of routes) {
-        const res = await route(req, url);
-        if (res) return res;
-      }
-    } catch (err) {
-      if (err instanceof HttpError) {
-        return error(err.code, err.message, err.status);
-      }
-      console.error('Unhandled error:', err);
-      return error('internal_error', 'Something went wrong', 500);
-    }
-
-    if (url.pathname.startsWith('/api/')) {
-      return error('not_found', 'Not found', 404);
-    }
-    return error('not_found', 'Not found', 404);
-  },
-});
+const server = Bun.serve({ port: env.port, fetch: handleRequest });
 
 console.log(`Aikido Video Library API listening on ${server.url}`);

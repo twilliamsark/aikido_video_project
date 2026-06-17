@@ -9,7 +9,7 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { keywords, videoEntries, videoKeywords, videoShares } from '../db/schema';
 import { embedUrl, parseYouTubeId } from '../lib/youtube';
-import { extractPlainText } from '../lib/tiptap';
+import { extractPlainText, sanitizeTipTap } from '../lib/tiptap';
 import { HttpError } from '../lib/http';
 import { parseCsv, toCsv } from '../lib/csv';
 import { randomToken } from '../lib/token';
@@ -58,10 +58,9 @@ function resolveDescription(input: {
   descriptionText?: string | null;
 }): { json: string | null; text: string | null } {
   if (input.descriptionJson !== undefined && input.descriptionJson !== null) {
-    return {
-      json: JSON.stringify(input.descriptionJson),
-      text: extractPlainText(input.descriptionJson),
-    };
+    // Sanitize to the allowed schema before persisting (TECHNICAL_SPEC.md §8.4, §9).
+    const clean = sanitizeTipTap(input.descriptionJson);
+    return { json: JSON.stringify(clean), text: extractPlainText(clean) };
   }
   if (input.descriptionText !== undefined && input.descriptionText !== null) {
     const text = input.descriptionText.trim();

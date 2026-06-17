@@ -9,7 +9,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client';
 import { filterListShares, filterLists } from '../db/schema';
-import { extractPlainText } from '../lib/tiptap';
+import { extractPlainText, sanitizeTipTap } from '../lib/tiptap';
 import { randomToken } from '../lib/token';
 import {
   DEFAULT_CRITERIA,
@@ -48,7 +48,8 @@ function resolveDescription(input: {
   descriptionText?: string | null;
 }): { json: string | null; text: string | null } {
   if (input.descriptionJson !== undefined && input.descriptionJson !== null) {
-    return { json: JSON.stringify(input.descriptionJson), text: extractPlainText(input.descriptionJson) };
+    const clean = sanitizeTipTap(input.descriptionJson);
+    return { json: JSON.stringify(clean), text: extractPlainText(clean) };
   }
   if (input.descriptionText !== undefined && input.descriptionText !== null) {
     const text = input.descriptionText.trim();

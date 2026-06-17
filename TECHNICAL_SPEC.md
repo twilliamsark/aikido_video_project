@@ -426,9 +426,10 @@ actively-shared content.
   - Bullet lists
   - Inline code + code block
   - Horizontal rule
-- Persist `editor.getJSON()`; on read, render with a TipTap/ProseMirror HTML
-  renderer or `generateHTML()` against the same restricted schema, then sanitize.
-- On save, also compute and store `description_text` (plaintext) for filtering.
+- Persist `editor.getJSON()`, **sanitized server-side to the restricted schema on
+  write** (§9). On read, render with `generateHTML()` against the same schema.
+- On save, also compute and store `description_text` (plaintext) for filtering and
+  for plain-text snippets in card/index views.
 
 ---
 
@@ -436,16 +437,28 @@ actively-shared content.
 
 - **Authorization is server-enforced** on every mutating and admin endpoint;
   Angular guards are convenience only.
-- **Rich text:** store JSON; render through the fixed restricted schema and a
-  sanitizer (e.g. strip disallowed nodes/marks, no raw HTML passthrough) to prevent
-  stored XSS.
+- **Rich text:** store JSON; **sanitized server-side on write** to the restricted
+  schema (`sanitizeTipTap` in `server/lib/tiptap.ts` drops disallowed
+  nodes/marks/attrs and clamps heading levels), so stored documents can never
+  carry formatting outside the allowed set or unexpected attributes. Rendered via
+  the same restricted schema; Angular `[innerHTML]` sanitizes the output.
 - **Share tokens:** cryptographically random, URL-safe, unguessable; do not leak
-  existence of inactive tokens (uniform 404).
-- **YouTube embeds:** only embed parsed video IDs; use privacy-enhanced domain.
+  existence of inactive tokens (uniform 404 — see `app.test.ts`).
+- **Takedown:** a `disabled` video is excluded from every public read path
+  (verified by tests).
+- **YouTube embeds:** only embed parsed video IDs; use privacy-enhanced domain;
+  the embed `<iframe>` src is validated against the expected prefix before being
+  trusted.
 - **Sessions:** better-auth secure cookies (HttpOnly, SameSite, Secure in prod).
+- **Production secret:** the server refuses to boot in production
+  (`NODE_ENV=production`) if `BETTER_AUTH_SECRET` is the dev default.
 - **Input validation:** Zod on all inputs; reject malformed YouTube URLs.
 - **CSRF:** rely on better-auth's protections; keep state-changing routes
   non-GET and cookie-guarded.
+- **Authorization tests:** `server/app.test.ts` drives the real request handler
+  in-process (with better-auth cookies) to assert 401 without a session, 403 for
+  non-admin CSV access, uniform 404 for bad tokens, and that disabled videos are
+  hidden from public reads.
 
 ---
 
