@@ -191,6 +191,7 @@ stable teacher identifier referenced by domain tables.
 | `youtube_video_id` | TEXT NOT NULL | Parsed 11-char ID; used for embed |
 | `description_json` | TEXT (JSON) | TipTap document; nullable |
 | `description_text` | TEXT | Plaintext extraction of description, for filtering/search |
+| `disabled` | INTEGER (0/1) NOT NULL DEFAULT 0 | Takedown kill-switch; hides the video from every public surface (§5.1) |
 | `created_by` | TEXT NOT NULL | FK → `user.id` |
 | `created_at` | TEXT (ISO 8601) NOT NULL | |
 | `updated_at` | TEXT (ISO 8601) NOT NULL | |
