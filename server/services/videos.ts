@@ -442,6 +442,60 @@ export function getPublicVideoByToken(token: string): PublicVideoDto | null {
   return toPublicDto(row.video, keywordsByVideo([row.video.id]).get(row.video.id) ?? [], row.token);
 }
 
+/** A saved/ad-hoc filter over the shared video catalog (TECHNICAL_SPEC.md §6.3). */
+export interface FilterCriteria {
+  /** Free-text query; AND across whitespace-separated terms. */
+  query: string | null;
+  /** Required keyword labels (the video must have all of them). */
+  keywords: string[];
+  sort: { field: 'title' | 'createdAt'; dir: 'asc' | 'desc' };
+}
+
+export const DEFAULT_CRITERIA: FilterCriteria = {
+  query: null,
+  keywords: [],
+  sort: { field: 'createdAt', dir: 'desc' },
+};
+
+/**
+ * Resolves a filter over the actively-shared catalog (TECHNICAL_SPEC.md §6).
+ * A video matches when every query term appears in its title, a keyword, or the
+ * description plaintext (terms may match different fields), AND it has every
+ * required keyword. Filtering is done in memory — the shared set is small.
+ */
+export function queryPublicVideos(criteria: FilterCriteria): PublicVideoDto[] {
+  const rows = db
+    .select({ video: videoEntries, token: videoShares.shareToken })
+    .from(videoShares)
+    .innerJoin(videoEntries, eq(videoShares.videoId, videoEntries.id))
+    .where(eq(videoShares.active, true))
+    .all();
+
+  const kw = keywordsByVideo(rows.map((r) => r.video.id));
+  const terms = (criteria.query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+  const required = criteria.keywords.map((k) => k.toLowerCase());
+
+  const matched = rows.filter((r) => {
+    const labels = kw.get(r.video.id) ?? [];
+    const haystack = [r.video.title, labels.join(' '), r.video.descriptionText ?? '']
+      .join(' ')
+      .toLowerCase();
+    const termsOk = terms.every((t) => haystack.includes(t));
+    const labelSet = new Set(labels.map((l) => l.toLowerCase()));
+    const keywordsOk = required.every((k) => labelSet.has(k));
+    return termsOk && keywordsOk;
+  });
+
+  const dir = criteria.sort.dir === 'asc' ? 1 : -1;
+  matched.sort((a, b) =>
+    criteria.sort.field === 'title'
+      ? dir * a.video.title.localeCompare(b.video.title)
+      : dir * a.video.createdAt.localeCompare(b.video.createdAt),
+  );
+
+  return matched.map((r) => toPublicDto(r.video, kw.get(r.video.id) ?? [], r.token));
+}
+
 /** Keyword autocomplete: labels matching an optional prefix/substring query. */
 export function listKeywords(query?: string): string[] {
   const q = query?.trim();

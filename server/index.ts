@@ -12,6 +12,7 @@ import { handleVideoRoutes } from './routes/videos';
 import { handleKeywordRoutes } from './routes/keywords';
 import { handleMeRoute } from './routes/me';
 import { handlePublicRoutes } from './routes/public';
+import { handleListRoutes } from './routes/lists';
 
 type RouteHandler = (req: Request, url: URL) => Promise<Response | null>;
 
@@ -19,6 +20,7 @@ const routes: RouteHandler[] = [
   handlePublicRoutes,
   handleMeRoute,
   handleVideoRoutes,
+  handleListRoutes,
   handleKeywordRoutes,
 ];
 

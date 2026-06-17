@@ -16,6 +16,11 @@ export const routes: Routes = [
       import('./features/public/public-video.component').then((m) => m.PublicVideoComponent),
   },
   {
+    path: 'list/:token',
+    loadComponent: () =>
+      import('./features/public/public-list.component').then((m) => m.PublicListComponent),
+  },
+  {
     path: 'login',
     loadComponent: () =>
       import('./features/auth/login.component').then((m) => m.LoginComponent),
@@ -37,6 +42,24 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/admin/video-form.component').then((m) => m.VideoFormComponent),
+  },
+  {
+    path: 'admin/lists',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/admin/filter-list-list.component').then((m) => m.FilterListListComponent),
+  },
+  {
+    path: 'admin/lists/new',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/admin/filter-list-form.component').then((m) => m.FilterListFormComponent),
+  },
+  {
+    path: 'admin/lists/:id',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/admin/filter-list-form.component').then((m) => m.FilterListFormComponent),
   },
   // Shared filter-list route (/list/:token) arrives in milestone 6.
   { path: '**', redirectTo: 'videos' },

@@ -5,6 +5,7 @@
  */
 import { error, json } from '../lib/http';
 import { getPublicVideoByToken, listPublicVideos } from '../services/videos';
+import { getPublicFilterListByToken } from '../services/filterLists';
 
 const PAGE_SIZE = 24;
 
@@ -26,6 +27,12 @@ export async function handlePublicRoutes(req: Request, url: URL): Promise<Respon
   if (segments[2] === 'videos' && segments[3] === 'share' && segments[4]) {
     const video = getPublicVideoByToken(segments[4]);
     return video ? json({ video }) : error('not_found', 'Not found', 404);
+  }
+
+  // GET /api/public/lists/:token — a shared filter list + its resolved videos
+  if (segments[2] === 'lists' && segments[3] && segments.length === 4) {
+    const list = getPublicFilterListByToken(segments[3]);
+    return list ? json({ list }) : error('not_found', 'Not found', 404);
   }
 
   return error('not_found', 'Not found', 404);

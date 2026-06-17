@@ -55,6 +55,41 @@ export interface ShareInfo {
   active: boolean;
 }
 
+/** Saved filter criteria (TECHNICAL_SPEC.md §6.3). */
+export interface FilterCriteria {
+  query: string | null;
+  keywords: string[];
+  sort: { field: 'title' | 'createdAt'; dir: 'asc' | 'desc' };
+}
+
+export interface FilterList {
+  id: string;
+  name: string;
+  descriptionJson: unknown | null;
+  descriptionText: string | null;
+  criteria: FilterCriteria;
+  shared: boolean;
+  shareToken: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Payload for creating/updating a filter list. */
+export interface FilterListInput {
+  name: string;
+  descriptionJson?: unknown | null;
+  criteria: FilterCriteria;
+}
+
+/** Public resolution of a shared filter list. */
+export interface PublicFilterList {
+  name: string;
+  descriptionJson: unknown | null;
+  criteria: FilterCriteria;
+  videos: PublicVideo[];
+}
+
 /** Payload for creating/updating a video. Description is a TipTap JSON document. */
 export interface VideoInput {
   title: string;

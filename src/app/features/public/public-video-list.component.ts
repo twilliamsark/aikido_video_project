@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PublicVideoService } from '../../core/public-video.service';
 import { PublicVideo } from '../../core/models';
+import { VideoGridComponent } from '../../shared/video-grid.component';
 
 /**
  * Public catalog of actively-shared videos (TECHNICAL_SPEC.md §5.1, §6).
@@ -10,7 +11,7 @@ import { PublicVideo } from '../../core/models';
  */
 @Component({
   selector: 'app-public-video-list',
-  imports: [RouterLink],
+  imports: [RouterLink, VideoGridComponent],
   template: `
     <div class="mx-auto max-w-5xl p-6">
       <header class="mb-6 flex items-center justify-between">
@@ -25,33 +26,7 @@ import { PublicVideo } from '../../core/models';
           No videos have been shared yet.
         </div>
       } @else {
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          @for (video of videos(); track video.id) {
-            <a
-              [routerLink]="['/v', video.shareToken]"
-              class="group overflow-hidden rounded-lg border border-gray-200 transition hover:shadow-md"
-            >
-              <div class="aspect-video w-full overflow-hidden bg-gray-100">
-                <img
-                  [src]="thumbnail(video)"
-                  [alt]="video.title"
-                  class="h-full w-full object-cover transition group-hover:scale-105"
-                  loading="lazy"
-                />
-              </div>
-              <div class="p-3">
-                <h2 class="font-medium text-gray-900">{{ video.title }}</h2>
-                @if (video.keywords.length) {
-                  <div class="mt-2 flex flex-wrap gap-1">
-                    @for (kw of video.keywords.slice(0, 6); track kw) {
-                      <span class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{{ kw }}</span>
-                    }
-                  </div>
-                }
-              </div>
-            </a>
-          }
-        </div>
+        <app-video-grid [videos]="videos()" />
 
         <div class="mt-8 flex items-center justify-center gap-4 text-sm">
           <button
@@ -89,10 +64,6 @@ export class PublicVideoListComponent {
 
   constructor() {
     this.load(1);
-  }
-
-  protected thumbnail(v: PublicVideo): string {
-    return `https://i.ytimg.com/vi/${v.youtubeVideoId}/hqdefault.jpg`;
   }
 
   protected go(page: number): void {

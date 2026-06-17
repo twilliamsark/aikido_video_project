@@ -15,7 +15,10 @@ import { Video } from '../../core/models';
       <header class="mb-6 flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900">Videos</h1>
-          <p class="text-sm text-gray-500">Signed in as {{ auth.user()?.email }}</p>
+          <p class="text-sm text-gray-500">
+            Signed in as {{ auth.user()?.email }} ·
+            <a routerLink="/admin/lists" class="text-indigo-600 hover:underline">Filter lists</a>
+          </p>
         </div>
         <div class="flex items-center gap-3">
           @if (auth.isAdmin()) {
