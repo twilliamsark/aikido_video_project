@@ -11,6 +11,7 @@
     "test": "ng test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run server/db/migrate.ts",
+    "db:seed": "bun run server/db/seed.ts",
     "auth:generate": "bunx @better-auth/cli generate --output server/db/auth-schema.ts"
   },
   "private": true,
