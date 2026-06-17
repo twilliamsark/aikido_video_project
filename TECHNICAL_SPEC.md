@@ -277,19 +277,23 @@ description.
   token is generated once when a share is first created and reused on re-share, so a
   previously distributed URL works again the moment it is re-activated. Tokens are
   never rotated.
-- The **public catalog** at `/videos` is a first-class page: it shows all videos
-  that are currently actively shared, with the student filter and sort applied.
-  Guests can reach it directly (no shared link required). Teachers see all videos,
-  shared or not, in `/admin`.
+- The **public catalog** at `/videos` shows the **entire library** — every video
+  is publicly browsable and playable by id at `/watch/:id`. Per-video "sharing"
+  no longer gates catalog visibility; it only governs the optional stable vanity
+  link `/v/:token`. Teachers still manage all videos in `/admin`.
+- `/lists` is a public index of all actively-shared filter lists (name, link,
+  description).
 
 ### 5.2 Public URLs
 
 | URL | Resolves to |
 |-----|-------------|
-| `/v/:shareToken` | Single shared video player + description |
+| `/videos` | Public browse of the whole library |
+| `/watch/:videoId` | Play any video (the library is public) |
+| `/lists` | Index of all actively-shared filter lists |
+| `/v/:shareToken` | A video via its stable vanity share link |
 | `/list/:shareToken` | A shared filtered list view (criteria over the whole library) |
 | `/list/:shareToken/v/:videoId` | Play a video reached through a shared list |
-| `/videos` | Public browse of all actively shared videos |
 
 Server returns **404** for unknown or inactive tokens (do not distinguish the two,
 to avoid token enumeration signals).
@@ -347,8 +351,10 @@ actively-shared content.
 ### 7.2 Public (guest)
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/public/videos` | List actively-shared videos; query params: `q`, `keywords`, `sort`, `dir`, `page` (1-based, 24/page); response includes `total` |
-| GET | `/api/public/videos/share/:token` | Single shared video (404 if token inactive/unknown) |
+| GET | `/api/public/videos` | List ALL videos; query params: `q`, `keywords`, `sort`, `dir`, `page` (1-based, 24/page); response includes `total` |
+| GET | `/api/public/videos/:id` | Any video by id (404 if unknown) |
+| GET | `/api/public/videos/share/:token` | A video via its vanity token (404 if token inactive/unknown) |
+| GET | `/api/public/lists` | Index of actively-shared filter lists |
 | GET | `/api/public/lists/:token` | Shared filter list metadata + resolved results |
 
 ### 7.3 Teacher (authenticated)

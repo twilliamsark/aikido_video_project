@@ -114,6 +114,33 @@ describe('filter list CRUD + sharing', () => {
   });
 });
 
+describe('public shared-lists index', () => {
+  test('lists only actively-shared lists with name, token, and description', () => {
+    const shared = lists.createFilterList('m6-teacher', {
+      name: 'Shared Index List',
+      descriptionJson: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Indexed.' }] }],
+      },
+      criteria: { query: 'm6', keywords: [], sort: { field: 'title', dir: 'asc' } },
+    });
+    lists.createFilterList('m6-teacher', {
+      name: 'Unshared List',
+      criteria: { query: 'm6', keywords: [], sort: { field: 'title', dir: 'asc' } },
+    });
+    const share = lists.shareFilterList(shared.id, 'm6-teacher');
+
+    const index = lists.listPublicFilterLists();
+    const names = index.map((l) => l.name);
+    expect(names).toContain('Shared Index List');
+    expect(names).not.toContain('Unshared List');
+
+    const entry = index.find((l) => l.name === 'Shared Index List')!;
+    expect(entry.token).toBe(share.token);
+    expect(entry.descriptionJson).toBeTruthy();
+  });
+});
+
 describe('queryPublicVideos', () => {
   test('matches the query across shared videos only, sorted by title', () => {
     const result = videos.queryPublicVideos({

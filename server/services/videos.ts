@@ -398,36 +398,39 @@ function toPublicDto(row: VideoRow, kw: string[], shareToken: string): PublicVid
 }
 
 export interface PublicListResult {
-  videos: PublicVideoDto[];
+  videos: ListVideoDto[];
   total: number;
   page: number;
   pageSize: number;
 }
 
-/** Lists actively-shared videos, newest first, paginated (TECHNICAL_SPEC.md §6). */
+/**
+ * Public catalog: ALL videos, newest first, paginated. The whole library is
+ * publicly browsable; videos are played by id via /watch/:id
+ * (TECHNICAL_SPEC.md §5.1, §6).
+ */
 export function listPublicVideos(page = 1, pageSize = 24): PublicListResult {
   const offset = (Math.max(1, page) - 1) * pageSize;
-  const activeShares = and(eq(videoShares.active, true));
-
-  const total = db
-    .select({ n: sql<number>`count(*)` })
-    .from(videoShares)
-    .where(activeShares)
-    .get()!.n;
+  const total = db.select({ n: sql<number>`count(*)` }).from(videoEntries).get()!.n;
 
   const rows = db
-    .select({ video: videoEntries, token: videoShares.shareToken })
-    .from(videoShares)
-    .innerJoin(videoEntries, eq(videoShares.videoId, videoEntries.id))
-    .where(activeShares)
+    .select()
+    .from(videoEntries)
     .orderBy(desc(videoEntries.createdAt))
     .limit(pageSize)
     .offset(offset)
     .all();
 
-  const kw = keywordsByVideo(rows.map((r) => r.video.id));
-  const videos = rows.map((r) => toPublicDto(r.video, kw.get(r.video.id) ?? [], r.token));
+  const kw = keywordsByVideo(rows.map((r) => r.id));
+  const videos = rows.map((r) => toListDto(r, kw.get(r.id) ?? []));
   return { videos, total, page: Math.max(1, page), pageSize };
+}
+
+/** Resolves any video by id for public viewing (the whole library is public). */
+export function getPublicVideoById(id: string): ListVideoDto | null {
+  const row = db.select().from(videoEntries).where(eq(videoEntries.id, id)).get();
+  if (!row) return null;
+  return toListDto(row, keywordsByVideo([id]).get(id) ?? []);
 }
 
 /** Resolves a public video by its share token, or null if unknown/inactive. */

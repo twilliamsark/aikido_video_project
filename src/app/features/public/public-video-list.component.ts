@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PublicVideoService } from '../../core/public-video.service';
-import { PublicVideo } from '../../core/models';
+import { ListVideo } from '../../core/models';
 import { VideoGridComponent } from '../../shared/video-grid.component';
 
 /**
@@ -16,7 +16,10 @@ import { VideoGridComponent } from '../../shared/video-grid.component';
     <div class="mx-auto max-w-5xl p-6">
       <header class="mb-6 flex items-center justify-between">
         <h1 class="text-2xl font-semibold text-gray-900">Aikido Video Library</h1>
-        <a routerLink="/login" class="text-sm text-gray-500 hover:underline">Teacher sign in</a>
+        <div class="flex items-center gap-4 text-sm">
+          <a routerLink="/lists" class="text-indigo-600 hover:underline">Browse lists</a>
+          <a routerLink="/login" class="text-gray-500 hover:underline">Teacher sign in</a>
+        </div>
       </header>
 
       @if (loading()) {
@@ -52,7 +55,7 @@ import { VideoGridComponent } from '../../shared/video-grid.component';
 export class PublicVideoListComponent {
   private readonly service = inject(PublicVideoService);
 
-  protected readonly videos = signal<PublicVideo[]>([]);
+  protected readonly videos = signal<ListVideo[]>([]);
   protected readonly total = signal(0);
   protected readonly page = signal(1);
   protected readonly pageSize = signal(24);

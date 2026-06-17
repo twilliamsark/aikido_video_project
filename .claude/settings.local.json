@@ -16,7 +16,8 @@
       "Bash(git add *)",
       "Bash(grep -E \"node_modules|\\\\.sqlite$|/dist/|\\\\.csv$\")",
       "Bash(bun -e ' *)",
-      "Bash(grep -n \"actively-shared video set\\\\|applies these criteria\\\\|applies \\\\`criteria_json\\\\`\\\\|shared filter list\" TECHNICAL_SPEC.md)"
+      "Bash(grep -n \"actively-shared video set\\\\|applies these criteria\\\\|applies \\\\`criteria_json\\\\`\\\\|shared filter list\" TECHNICAL_SPEC.md)",
+      "Bash(grep -n \"public catalog at\\\\|actively shared\\\\|public browse of all\\\\|/videos\\\\` | \\\\|/v/:token\\\\` | \\\\|public/videos\\\\` | \\\\|public/videos/share\" TECHNICAL_SPEC.md)"
     ]
   }
 }

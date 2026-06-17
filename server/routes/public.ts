@@ -4,8 +4,12 @@
  * 404 so tokens can't be enumerated.
  */
 import { error, json } from '../lib/http';
-import { getPublicVideoByToken, listPublicVideos } from '../services/videos';
-import { getPublicFilterListByToken, getPublicListVideo } from '../services/filterLists';
+import { getPublicVideoById, getPublicVideoByToken, listPublicVideos } from '../services/videos';
+import {
+  getPublicFilterListByToken,
+  getPublicListVideo,
+  listPublicFilterLists,
+} from '../services/filterLists';
 
 const PAGE_SIZE = 24;
 
@@ -23,10 +27,21 @@ export async function handlePublicRoutes(req: Request, url: URL): Promise<Respon
     return json(listPublicVideos(page, PAGE_SIZE));
   }
 
-  // GET /api/public/videos/share/:token — a single shared video
+  // GET /api/public/videos/share/:token — a single shared video (vanity link)
   if (segments[2] === 'videos' && segments[3] === 'share' && segments[4]) {
     const video = getPublicVideoByToken(segments[4]);
     return video ? json({ video }) : error('not_found', 'Not found', 404);
+  }
+
+  // GET /api/public/videos/:id — any video (the whole library is public)
+  if (segments[2] === 'videos' && segments[3] && segments.length === 4) {
+    const video = getPublicVideoById(segments[3]);
+    return video ? json({ video }) : error('not_found', 'Not found', 404);
+  }
+
+  // GET /api/public/lists — index of all actively-shared filter lists
+  if (segments[2] === 'lists' && segments.length === 3) {
+    return json({ lists: listPublicFilterLists() });
   }
 
   // GET /api/public/lists/:token — a shared filter list + its resolved videos

@@ -179,6 +179,33 @@ export function unshareFilterList(listId: string): ShareInfo | null {
   return { token: existing.shareToken, active: false };
 }
 
+export interface PublicListSummary {
+  name: string;
+  token: string;
+  descriptionJson: unknown | null;
+}
+
+/** Public index of all actively-shared filter lists (TECHNICAL_SPEC.md §5.2). */
+export function listPublicFilterLists(): PublicListSummary[] {
+  const rows = db
+    .select({
+      name: filterLists.name,
+      token: filterListShares.shareToken,
+      descriptionJson: filterLists.descriptionJson,
+      createdAt: filterLists.createdAt,
+    })
+    .from(filterListShares)
+    .innerJoin(filterLists, eq(filterListShares.filterListId, filterLists.id))
+    .where(eq(filterListShares.active, true))
+    .orderBy(desc(filterLists.createdAt))
+    .all();
+  return rows.map((r) => ({
+    name: r.name,
+    token: r.token,
+    descriptionJson: r.descriptionJson ? JSON.parse(r.descriptionJson) : null,
+  }));
+}
+
 /** Loads the active filter list for a token (its criteria), or null. */
 function activeListByToken(token: string): { list: typeof filterLists.$inferSelect } | null {
   return (

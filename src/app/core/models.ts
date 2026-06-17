@@ -44,10 +44,17 @@ export interface PublicVideo {
 }
 
 export interface PublicVideoList {
-  videos: PublicVideo[];
+  videos: ListVideo[];
   total: number;
   page: number;
   pageSize: number;
+}
+
+/** Summary of a shared filter list for the public index (/lists). */
+export interface PublicListSummary {
+  name: string;
+  token: string;
+  descriptionJson: unknown | null;
 }
 
 export interface ShareInfo {

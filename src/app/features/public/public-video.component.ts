@@ -94,10 +94,17 @@ export class PublicVideoComponent {
 
   constructor() {
     const params = this.route.snapshot.paramMap;
-    // List-scoped: /list/:listToken/v/:videoId  vs  direct: /v/:token
+    const videoId = params.get('videoId');
+    const token = params.get('token');
+    // Three entry points:
+    //   /list/:listToken/v/:videoId -> list-scoped playback
+    //   /watch/:videoId             -> any video (library is public)
+    //   /v/:token                   -> individual vanity share link
     const request$ = this.listToken
-      ? this.service.getListVideo(this.listToken, params.get('videoId')!)
-      : this.service.getByToken(params.get('token')!);
+      ? this.service.getListVideo(this.listToken, videoId!)
+      : videoId
+        ? this.service.getById(videoId)
+        : this.service.getByToken(token!);
 
     request$.subscribe({
       next: (v) => {

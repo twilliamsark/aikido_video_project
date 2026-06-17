@@ -4,9 +4,9 @@ import { GridVideo } from '../core/models';
 
 /**
  * Reusable card grid of public videos.
- * - On /videos each card links to the video's own share page (`/v/:shareToken`).
+ * - On /videos each card links to the watch page by id (`/watch/:id`).
  * - On /list/:token (pass `listToken`) cards link to the list-scoped player
- *   (`/list/:token/v/:id`), since list videos aren't individually shared.
+ *   (`/list/:token/v/:id`), so playback stays scoped to that list.
  */
 @Component({
   selector: 'app-video-grid',
@@ -44,11 +44,11 @@ import { GridVideo } from '../core/models';
 })
 export class VideoGridComponent {
   readonly videos = input.required<GridVideo[]>();
-  /** When set, cards link to the list-scoped player instead of /v/:shareToken. */
+  /** When set, cards link to the list-scoped player instead of /watch/:id. */
   readonly listToken = input<string | null>(null);
 
   protected linkFor(video: GridVideo): unknown[] {
     const token = this.listToken();
-    return token ? ['/list', token, 'v', video.id] : ['/v', video.shareToken];
+    return token ? ['/list', token, 'v', video.id] : ['/watch', video.id];
   }
 }

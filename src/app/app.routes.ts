@@ -11,9 +11,19 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'watch/:videoId',
+    loadComponent: () =>
+      import('./features/public/public-video.component').then((m) => m.PublicVideoComponent),
+  },
+  {
     path: 'v/:token',
     loadComponent: () =>
       import('./features/public/public-video.component').then((m) => m.PublicVideoComponent),
+  },
+  {
+    path: 'lists',
+    loadComponent: () =>
+      import('./features/public/public-lists.component').then((m) => m.PublicListsComponent),
   },
   {
     path: 'list/:token',

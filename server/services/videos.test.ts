@@ -173,13 +173,15 @@ describe('sharing & public access', () => {
     }).id;
   });
 
-  test('a new video is not public until shared', () => {
+  test('the whole library is public: every video is in the catalog and playable by id', () => {
+    // Not individually shared, but still in the public catalog and playable.
     expect(svc.getVideo(videoId)!.shared).toBe(false);
-    const before = svc.listPublicVideos().videos.find((v) => v.id === videoId);
-    expect(before).toBeUndefined();
+    expect(svc.listPublicVideos().videos.find((v) => v.id === videoId)).toBeDefined();
+    expect(svc.getPublicVideoById(videoId)?.title).toBe('Share Me');
+    expect(svc.getPublicVideoById('no-such-id')).toBeNull();
   });
 
-  test('sharing creates a token and exposes the video publicly', () => {
+  test('sharing creates a stable vanity token (/v/:token)', () => {
     const share = svc.shareVideo(videoId, 'teacher-1');
     expect(share.active).toBe(true);
     expect(share.token).toHaveLength(22);
@@ -190,7 +192,6 @@ describe('sharing & public access', () => {
 
     const pub = svc.getPublicVideoByToken(share.token);
     expect(pub?.title).toBe('Share Me');
-    // Public DTO omits owner/plaintext.
     expect((pub as unknown as Record<string, unknown>)['createdBy']).toBeUndefined();
   });
 
@@ -201,17 +202,18 @@ describe('sharing & public access', () => {
     expect(reshared.token).toBe(first);
   });
 
-  test('unsharing hides the video and 404s the token', () => {
+  test('unsharing only disables the vanity token; the video stays in the catalog', () => {
     const token = svc.getVideo(videoId)!.shareToken!;
     svc.unshareVideo(videoId);
 
     expect(svc.getVideo(videoId)!.shared).toBe(false);
-    expect(svc.getPublicVideoByToken(token)).toBeNull();
-    expect(svc.listPublicVideos().videos.find((v) => v.id === videoId)).toBeUndefined();
+    expect(svc.getPublicVideoByToken(token)).toBeNull(); // vanity link off
+    // ...but the video is still publicly browsable/playable by id.
+    expect(svc.listPublicVideos().videos.find((v) => v.id === videoId)).toBeDefined();
+    expect(svc.getPublicVideoById(videoId)).not.toBeNull();
   });
 
   test('public list is paginated with a total count', () => {
-    svc.shareVideo(videoId, 'teacher-1');
     const result = svc.listPublicVideos(1, 10);
     expect(result.page).toBe(1);
     expect(result.pageSize).toBe(10);
