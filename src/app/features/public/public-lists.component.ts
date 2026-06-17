@@ -2,17 +2,16 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PublicVideoService } from '../../core/public-video.service';
 import { PublicListSummary } from '../../core/models';
-import { RichTextViewerComponent } from '../../shared/rich-text-viewer.component';
 import { PublicHeaderComponent } from '../../shared/public-header.component';
-import type { JSONContent } from '@tiptap/core';
 
 /**
  * Public index of shared filter lists (TECHNICAL_SPEC.md §5.2): list name, a
- * link to the list, and its description.
+ * link to the list, and a plain-text description (rich text is reserved for the
+ * /watch and /list pages).
  */
 @Component({
   selector: 'app-public-lists',
-  imports: [RouterLink, RichTextViewerComponent, PublicHeaderComponent],
+  imports: [RouterLink, PublicHeaderComponent],
   template: `
     <app-public-header />
     <div class="mx-auto max-w-4xl p-6">
@@ -45,8 +44,8 @@ import type { JSONContent } from '@tiptap/core';
                   <a [routerLink]="['/list', list.token]" class="text-gray-500 hover:underline">Open</a>
                 </td>
                 <td class="py-3 text-gray-700">
-                  @if (list.descriptionJson) {
-                    <app-rich-text-viewer [doc]="docFor(list)" />
+                  @if (list.descriptionText) {
+                    <span>{{ list.descriptionText }}</span>
                   } @else {
                     <span class="text-gray-400">—</span>
                   }
@@ -73,9 +72,5 @@ export class PublicListsComponent {
       },
       error: () => this.loading.set(false),
     });
-  }
-
-  protected docFor(list: PublicListSummary): JSONContent | null {
-    return (list.descriptionJson as JSONContent | null) ?? null;
   }
 }

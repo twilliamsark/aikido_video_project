@@ -137,7 +137,8 @@ describe('public shared-lists index', () => {
 
     const entry = index.find((l) => l.name === 'Shared Index List')!;
     expect(entry.token).toBe(share.token);
-    expect(entry.descriptionJson).toBeTruthy();
+    // Plain-text mirror (not rich JSON) for the index.
+    expect(entry.descriptionText).toBe('Indexed.');
   });
 });
 

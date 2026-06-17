@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Location } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { Observable } from 'rxjs';
 import { PublicVideoService } from '../../core/public-video.service';
 import { RichTextViewerComponent } from '../../shared/rich-text-viewer.component';
 import { PublicHeaderComponent } from '../../shared/public-header.component';
@@ -26,11 +28,11 @@ interface PlayableVideo {
  */
 @Component({
   selector: 'app-public-video',
-  imports: [RouterLink, RichTextViewerComponent, PublicHeaderComponent],
+  imports: [RichTextViewerComponent, PublicHeaderComponent],
   template: `
     <app-public-header />
     <div class="mx-auto max-w-3xl p-6">
-      <a [routerLink]="backLink()" class="text-sm text-gray-500 hover:underline">← Back</a>
+      <button (click)="back()" class="text-sm text-gray-500 hover:underline">← Back</button>
 
       @if (loading()) {
         <p class="mt-4 text-gray-500">Loading…</p>
@@ -71,6 +73,8 @@ interface PlayableVideo {
 })
 export class PublicVideoComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly service = inject(PublicVideoService);
   private readonly sanitizer = inject(DomSanitizer);
 
@@ -78,6 +82,8 @@ export class PublicVideoComponent {
   protected readonly loading = signal(true);
 
   private readonly listToken = this.route.snapshot.paramMap.get('listToken');
+  // Did we arrive via in-app navigation (so history-back returns to that page)?
+  private readonly cameFromApp = !!this.router.getCurrentNavigation()?.previousNavigation;
 
   protected readonly descriptionDoc = computed(
     () => (this.video()?.descriptionJson as JSONContent | null) ?? null,
@@ -90,8 +96,17 @@ export class PublicVideoComponent {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   });
 
-  protected backLink(): unknown[] {
-    return this.listToken ? ['/list', this.listToken] : ['/videos'];
+  /**
+   * Returns to wherever the user came from: browser-history back when they
+   * navigated here in-app (preserving the prior page's filters/scroll), or a
+   * sensible fallback (the source list, else the catalog) on a direct link.
+   */
+  protected back(): void {
+    if (this.cameFromApp) {
+      this.location.back();
+    } else {
+      void this.router.navigate(this.listToken ? ['/list', this.listToken] : ['/videos']);
+    }
   }
 
   constructor() {
@@ -102,7 +117,7 @@ export class PublicVideoComponent {
     //   /list/:listToken/v/:videoId -> list-scoped playback
     //   /watch/:videoId             -> any video (library is public)
     //   /v/:token                   -> individual vanity share link
-    const request$ = this.listToken
+    const request$: Observable<PlayableVideo> = this.listToken
       ? this.service.getListVideo(this.listToken, videoId!)
       : videoId
         ? this.service.getById(videoId)

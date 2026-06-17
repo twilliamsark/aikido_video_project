@@ -56,7 +56,7 @@ export interface PublicVideoList {
 export interface PublicListSummary {
   name: string;
   token: string;
-  descriptionJson: unknown | null;
+  descriptionText: string | null;
 }
 
 export interface ShareInfo {
@@ -98,6 +98,7 @@ export interface ListVideo {
   youtubeVideoId: string;
   embedUrl: string;
   descriptionJson: unknown | null;
+  descriptionText: string | null;
   keywords: string[];
   createdAt: string;
 }
@@ -116,6 +117,7 @@ export interface GridVideo {
   title: string;
   youtubeVideoId: string;
   keywords: string[];
+  descriptionText?: string | null;
   shareToken?: string | null;
 }
 

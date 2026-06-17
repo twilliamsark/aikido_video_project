@@ -29,6 +29,9 @@ import { GridVideo } from '../core/models';
           </div>
           <div class="p-3">
             <h2 class="font-medium text-gray-900">{{ video.title }}</h2>
+            @if (video.descriptionText) {
+              <p class="mt-1 truncate text-sm text-gray-500">{{ video.descriptionText }}</p>
+            }
             @if (video.keywords.length) {
               <div class="mt-2 flex flex-wrap gap-1">
                 @for (kw of video.keywords.slice(0, 6); track kw) {

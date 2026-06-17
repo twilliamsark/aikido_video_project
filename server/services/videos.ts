@@ -484,6 +484,8 @@ export interface ListVideoDto {
   youtubeVideoId: string;
   embedUrl: string;
   descriptionJson: unknown | null;
+  /** Plaintext mirror — used for truncated snippets in card/list views. */
+  descriptionText: string | null;
   keywords: string[];
   createdAt: string;
 }
@@ -495,6 +497,7 @@ function toListDto(row: VideoRow, kw: string[]): ListVideoDto {
     youtubeVideoId: row.youtubeVideoId,
     embedUrl: embedUrl(row.youtubeVideoId),
     descriptionJson: row.descriptionJson ? JSON.parse(row.descriptionJson) : null,
+    descriptionText: row.descriptionText,
     keywords: kw.sort((a, b) => a.localeCompare(b)),
     createdAt: row.createdAt,
   };

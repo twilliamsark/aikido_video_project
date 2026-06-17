@@ -44,7 +44,17 @@ import { AdminHeaderComponent } from '../../shared/admin-header.component';
           <tbody>
             @for (list of lists(); track list.id) {
               <tr class="border-b border-gray-100">
-                <td class="py-3 pr-4 font-medium text-gray-900">{{ list.name }}</td>
+                <td class="py-3 pr-4 font-medium">
+                  @if (list.shared && list.shareToken) {
+                    <a
+                      [routerLink]="['/list', list.shareToken]"
+                      class="text-gray-900 hover:text-indigo-600 hover:underline"
+                      >{{ list.name }}</a
+                    >
+                  } @else {
+                    <span class="text-gray-900">{{ list.name }}</span>
+                  }
+                </td>
                 <td class="py-3 pr-4">
                   @if (list.shared) {
                     <div class="flex items-center gap-2">

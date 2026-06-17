@@ -77,8 +77,12 @@ import { AdminHeaderComponent } from '../../shared/admin-header.component';
           <tbody>
             @for (video of videos(); track video.id) {
               <tr class="border-b border-gray-100" [class.opacity-50]="video.disabled">
-                <td class="py-3 pr-4 font-medium text-gray-900">
-                  {{ video.title }}
+                <td class="py-3 pr-4 font-medium">
+                  <a
+                    [routerLink]="['/watch', video.id]"
+                    class="text-gray-900 hover:text-indigo-600 hover:underline"
+                    >{{ video.title }}</a
+                  >
                   @if (video.disabled) {
                     <span class="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                       Disabled
