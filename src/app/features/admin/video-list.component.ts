@@ -122,26 +122,25 @@ import { Video } from '../../core/models';
                   }
                 </td>
                 <td class="py-3 pr-4 text-gray-500">{{ video.createdAt | date: 'mediumDate' }}</td>
-                <td class="py-3 text-right">
-                  <a
-                    [routerLink]="['/admin/videos', video.id]"
-                    class="text-indigo-600 hover:underline"
-                    >Edit</a
-                  >
-                  <button
-                    (click)="toggleDisabled(video)"
-                    class="ml-4 hover:underline"
-                    [class.text-amber-700]="!video.disabled"
-                    [class.text-green-700]="video.disabled"
-                  >
-                    {{ video.disabled ? 'Enable' : 'Disable' }}
-                  </button>
-                  <button
-                    (click)="remove(video)"
-                    class="ml-4 text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
+                <td class="py-3">
+                  <div class="flex items-center justify-end gap-4 whitespace-nowrap">
+                    <a
+                      [routerLink]="['/admin/videos', video.id]"
+                      class="text-indigo-600 hover:underline"
+                      >Edit</a
+                    >
+                    <button
+                      (click)="toggleDisabled(video)"
+                      class="hover:underline"
+                      [class.text-amber-700]="!video.disabled"
+                      [class.text-green-700]="video.disabled"
+                    >
+                      {{ video.disabled ? 'Enable' : 'Disable' }}
+                    </button>
+                    <button (click)="remove(video)" class="text-red-600 hover:underline">
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
