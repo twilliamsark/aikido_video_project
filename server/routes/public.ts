@@ -4,7 +4,12 @@
  * 404 so tokens can't be enumerated.
  */
 import { error, json } from '../lib/http';
-import { getPublicVideoById, getPublicVideoByToken, listPublicVideos } from '../services/videos';
+import {
+  getPublicVideoById,
+  getPublicVideoByToken,
+  listPublicVideos,
+  type FilterCriteria,
+} from '../services/videos';
 import {
   getPublicFilterListByToken,
   getPublicListVideo,
@@ -21,10 +26,21 @@ export async function handlePublicRoutes(req: Request, url: URL): Promise<Respon
     return error('method_not_allowed', `${req.method} not allowed`, 405);
   }
 
-  // GET /api/public/videos  — list actively-shared videos (paginated)
+  // GET /api/public/videos — browse the library, filtered + sorted + paginated
   if (segments[2] === 'videos' && segments.length === 3) {
-    const page = Number(url.searchParams.get('page') ?? '1') || 1;
-    return json(listPublicVideos(page, PAGE_SIZE));
+    const p = url.searchParams;
+    const page = Number(p.get('page') ?? '1') || 1;
+    const field = p.get('sort') === 'title' ? 'title' : 'createdAt';
+    const dir = p.get('dir') === 'asc' ? 'asc' : 'desc';
+    const criteria: FilterCriteria = {
+      query: p.get('q')?.trim() || null,
+      keywords: (p.get('keywords') ?? '')
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean),
+      sort: { field, dir },
+    };
+    return json(listPublicVideos(criteria, page, PAGE_SIZE));
   }
 
   // GET /api/public/videos/share/:token — a single shared video (vanity link)

@@ -422,27 +422,19 @@ export interface PublicListResult {
 }
 
 /**
- * Public catalog: ALL videos, newest first, paginated. The whole library is
- * publicly browsable; videos are played by id via /watch/:id
- * (TECHNICAL_SPEC.md §5.1, §6).
+ * Public catalog: the whole enabled library, filtered + sorted by `criteria`
+ * (TECHNICAL_SPEC.md §5.1, §6), then paginated. Videos are played by id via
+ * /watch/:id. With the default criteria this is simply newest-first.
  */
-export function listPublicVideos(page = 1, pageSize = 24): PublicListResult {
+export function listPublicVideos(
+  criteria: FilterCriteria = DEFAULT_CRITERIA,
+  page = 1,
+  pageSize = 24,
+): PublicListResult {
+  const all = queryAllVideos(criteria);
+  const total = all.length;
   const offset = (Math.max(1, page) - 1) * pageSize;
-  const enabled = eq(videoEntries.disabled, false);
-  const total = db.select({ n: sql<number>`count(*)` }).from(videoEntries).where(enabled).get()!.n;
-
-  const rows = db
-    .select()
-    .from(videoEntries)
-    .where(enabled)
-    .orderBy(desc(videoEntries.createdAt))
-    .limit(pageSize)
-    .offset(offset)
-    .all();
-
-  const kw = keywordsByVideo(rows.map((r) => r.id));
-  const videos = rows.map((r) => toListDto(r, kw.get(r.id) ?? []));
-  return { videos, total, page: Math.max(1, page), pageSize };
+  return { videos: all.slice(offset, offset + pageSize), total, page: Math.max(1, page), pageSize };
 }
 
 /** Resolves any enabled video by id for public viewing; null if missing/disabled. */

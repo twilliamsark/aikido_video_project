@@ -8,10 +8,12 @@ import { ListVideo, PublicFilterList, PublicListSummary, PublicVideo, PublicVide
 export class PublicVideoService {
   private readonly http = inject(HttpClient);
 
-  list(page = 1): Observable<PublicVideoList> {
-    return this.http.get<PublicVideoList>('/api/public/videos', {
-      params: new HttpParams().set('page', page),
-    });
+  list(opts: { page?: number; q?: string; sort?: string; dir?: string } = {}): Observable<PublicVideoList> {
+    let params = new HttpParams().set('page', opts.page ?? 1);
+    if (opts.q) params = params.set('q', opts.q);
+    if (opts.sort) params = params.set('sort', opts.sort);
+    if (opts.dir) params = params.set('dir', opts.dir);
+    return this.http.get<PublicVideoList>('/api/public/videos', { params });
   }
 
   /** Any video by id (the whole library is public). */

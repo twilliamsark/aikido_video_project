@@ -214,11 +214,30 @@ describe('sharing & public access', () => {
   });
 
   test('public list is paginated with a total count', () => {
-    const result = svc.listPublicVideos(1, 10);
+    const result = svc.listPublicVideos(undefined, 1, 10);
     expect(result.page).toBe(1);
     expect(result.pageSize).toBe(10);
     expect(result.total).toBeGreaterThanOrEqual(1);
     expect(result.videos.length).toBeLessThanOrEqual(10);
+  });
+
+  test('catalog filters by query and sorts', () => {
+    // Free-text query narrows the catalog (matches title/keyword/description).
+    const filtered = svc.listPublicVideos({
+      query: 'share',
+      keywords: [],
+      sort: { field: 'title', dir: 'asc' },
+    });
+    expect(filtered.videos.some((v) => v.title === 'Share Me')).toBe(true);
+    expect(filtered.total).toBeLessThan(svc.listPublicVideos().total);
+
+    // A query that matches nothing yields an empty page.
+    const none = svc.listPublicVideos({
+      query: 'zzzznomatch',
+      keywords: [],
+      sort: { field: 'createdAt', dir: 'desc' },
+    });
+    expect(none.total).toBe(0);
   });
 
   test('disabling a video removes it from EVERY public surface', () => {
