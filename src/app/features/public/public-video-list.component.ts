@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PublicVideoService } from '../../core/public-video.service';
+import { AuthService } from '../../core/auth.service';
 import { ListVideo } from '../../core/models';
 import { VideoGridComponent } from '../../shared/video-grid.component';
 
@@ -18,7 +19,11 @@ import { VideoGridComponent } from '../../shared/video-grid.component';
         <h1 class="text-2xl font-semibold text-gray-900">Aikido Video Library</h1>
         <div class="flex items-center gap-4 text-sm">
           <a routerLink="/lists" class="text-indigo-600 hover:underline">Browse lists</a>
-          <a routerLink="/login" class="text-gray-500 hover:underline">Teacher sign in</a>
+          @if (auth.isAuthenticated()) {
+            <a routerLink="/admin/videos" class="text-gray-500 hover:underline">Admin</a>
+          } @else {
+            <a routerLink="/login" class="text-gray-500 hover:underline">Teacher sign in</a>
+          }
         </div>
       </header>
 
@@ -54,6 +59,7 @@ import { VideoGridComponent } from '../../shared/video-grid.component';
 })
 export class PublicVideoListComponent {
   private readonly service = inject(PublicVideoService);
+  protected readonly auth = inject(AuthService);
 
   protected readonly videos = signal<ListVideo[]>([]);
   protected readonly total = signal(0);
@@ -67,6 +73,8 @@ export class PublicVideoListComponent {
 
   constructor() {
     this.load(1);
+    // Detect an existing teacher session so the header can offer an Admin link.
+    void this.auth.ensureLoaded();
   }
 
   protected go(page: number): void {
