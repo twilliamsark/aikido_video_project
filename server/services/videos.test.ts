@@ -109,11 +109,20 @@ describe('CSV import/export', () => {
     const result = svc.importVideosFromCsv('teacher-1', csv);
     expect(result.created).toBe(2);
     expect(result.skipped).toBe(1);
+    expect(result.duplicates).toBe(0);
     expect(result.errors[0]).toMatchObject({ name: 'Bad Row', reason: 'Missing url' });
 
     const imported = svc.listVideos().find((v) => v.title === 'Aihanmi Shihonage')!;
     // Cell values from the non name/url columns become keywords (sorted).
     expect(imported.keywords).toEqual(['Katatedori', 'Shihonage', 'Tiado', 'Ura']);
+  });
+
+  test('re-importing the same CSV dedupes by YouTube video ID', () => {
+    const before = svc.listVideos().length;
+    const result = svc.importVideosFromCsv('teacher-1', csv);
+    expect(result.created).toBe(0);
+    expect(result.duplicates).toBe(2);
+    expect(svc.listVideos().length).toBe(before); // no new videos created
   });
 
   test('export produces name,url,keywords with ;-joined keywords and round-trips', () => {

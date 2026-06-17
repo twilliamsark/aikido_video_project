@@ -188,7 +188,17 @@ export function deleteVideo(id: string): boolean {
 export interface ImportResult {
   created: number;
   skipped: number;
+  duplicates: number;
   errors: { row: number; name: string; reason: string }[];
+}
+
+/** True if a video with the given parsed YouTube video ID already exists. */
+function existsByYoutubeId(youtubeVideoId: string): boolean {
+  return !!db
+    .select({ id: videoEntries.id })
+    .from(videoEntries)
+    .where(eq(videoEntries.youtubeVideoId, youtubeVideoId))
+    .get();
 }
 
 /**
@@ -197,11 +207,13 @@ export interface ImportResult {
  * The header row must contain `name` and `url` columns (case-insensitive). Every
  * other column is treated as keywords: each cell is split on ';' so that values
  * exported by {@link exportVideosToCsv} round-trip. Rows with a missing name or an
- * unparseable YouTube URL are skipped and reported.
+ * unparseable YouTube URL are skipped and reported. Rows whose YouTube video ID
+ * already exists (in the library or earlier in the same file) are counted as
+ * duplicates and skipped.
  */
 export function importVideosFromCsv(userId: string, csvText: string): ImportResult {
   const rows = parseCsv(csvText).filter((r) => r.some((c) => c.trim() !== ''));
-  const result: ImportResult = { created: 0, skipped: 0, errors: [] };
+  const result: ImportResult = { created: 0, skipped: 0, duplicates: 0, errors: [] };
   if (rows.length < 2) return result;
 
   const header = rows[0]!.map((h) => h.trim());
@@ -231,6 +243,17 @@ export function importVideosFromCsv(userId: string, csvText: string): ImportResu
     if (!url) {
       result.skipped++;
       result.errors.push({ row: rowNumber, name, reason: 'Missing url' });
+      continue;
+    }
+    const youtubeVideoId = parseYouTubeId(url);
+    if (!youtubeVideoId) {
+      result.skipped++;
+      result.errors.push({ row: rowNumber, name, reason: 'Could not parse a YouTube video ID' });
+      continue;
+    }
+    // Dedupe against existing videos (and earlier rows committed this run).
+    if (existsByYoutubeId(youtubeVideoId)) {
+      result.duplicates++;
       continue;
     }
     try {

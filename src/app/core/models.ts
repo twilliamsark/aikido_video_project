@@ -11,6 +11,7 @@ export interface Teacher {
 export interface ImportResult {
   created: number;
   skipped: number;
+  duplicates: number;
   errors: { row: number; name: string; reason: string }[];
 }
 

@@ -142,9 +142,11 @@ server enforces it regardless.
 - Keywords are upserted case-insensitively and deduped (existing canonical casing
   wins).
 - Rows with a missing name or an unparseable YouTube URL are **skipped and
-  reported**. Response: `{ created, skipped, errors: [{ row, name, reason }] }`.
-- Note: import always creates; it does not dedupe against existing videos, so
-  re-importing the same file adds duplicates.
+  reported**.
+- **Deduped by YouTube video ID**: rows whose video already exists (in the library
+  or earlier in the same file) are counted as `duplicates` and skipped, so
+  re-importing a file is safe/idempotent.
+- Response: `{ created, skipped, duplicates, errors: [{ row, name, reason }] }`.
 
 **Export** — `GET /api/videos/export` → `text/csv` download:
 - Columns: `name,url,keywords` where keywords are `;`-joined (alphabetical).

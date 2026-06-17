@@ -164,7 +164,7 @@ export class VideoListComponent {
     try {
       const text = await file.text();
       const result = await firstValueFrom(this.videoService.importCsv(text));
-      let summary = `Imported ${result.created} video(s); skipped ${result.skipped}.`;
+      let summary = `Imported ${result.created} video(s); ${result.duplicates} duplicate(s) skipped; ${result.skipped} skipped.`;
       if (result.errors.length) {
         const preview = result.errors
           .slice(0, 5)
