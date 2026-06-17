@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { Video, VideoInput } from './models';
+import { ImportResult, Video, VideoInput } from './models';
 
 /** Teacher-facing video CRUD client (TECHNICAL_SPEC.md §7.3). */
 @Injectable({ providedIn: 'root' })
@@ -34,5 +34,17 @@ export class VideoService {
 
   remove(id: string): Observable<void> {
     return this.http.delete<{ ok: true }>(`/api/videos/${id}`).pipe(map(() => undefined));
+  }
+
+  /** Admin-only: import videos from raw CSV text (TECHNICAL_SPEC.md §3.5). */
+  importCsv(csvText: string): Observable<ImportResult> {
+    return this.http.post<ImportResult>('/api/videos/import', csvText, {
+      headers: { 'Content-Type': 'text/csv' },
+    });
+  }
+
+  /** Admin-only: download all videos as a CSV blob. */
+  exportCsv(): Observable<Blob> {
+    return this.http.get('/api/videos/export', { responseType: 'blob' });
   }
 }

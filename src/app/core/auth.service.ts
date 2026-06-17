@@ -20,6 +20,7 @@ export class AuthService {
 
   readonly user = this._user.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
+  readonly isAdmin = computed(() => this._user()?.isAdmin ?? false);
 
   /** Loads the session once (cached); returns the current user or null. */
   async ensureLoaded(): Promise<Teacher | null> {
@@ -31,9 +32,8 @@ export class AuthService {
 
   async refresh(): Promise<Teacher | null> {
     try {
-      const res = await firstValueFrom(
-        this.http.get<SessionResponse>('/api/auth/get-session'),
-      );
+      // /api/me wraps the better-auth session and adds the isAdmin flag.
+      const res = await firstValueFrom(this.http.get<SessionResponse>('/api/me'));
       this._user.set(res?.user ?? null);
     } catch {
       this._user.set(null);

@@ -4,6 +4,14 @@ export interface Teacher {
   id: string;
   email: string;
   name: string;
+  isAdmin: boolean;
+}
+
+/** Result of a CSV import (TECHNICAL_SPEC.md §3.5). */
+export interface ImportResult {
+  created: number;
+  skipped: number;
+  errors: { row: number; name: string; reason: string }[];
 }
 
 export interface Video {

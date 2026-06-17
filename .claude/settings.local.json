@@ -11,7 +11,8 @@
       "Bash(bun -e \"import {Database} from 'bun:sqlite'; const db=new Database\\('data/library.sqlite'\\); console.log\\(db.query\\(\\\\\"select name from sqlite_master where type='table' and name not like 'sqlite_%' and name not like '__drizzle%' order by name\\\\\"\\).all\\(\\).map\\(r=>r.name\\).join\\('\\\\n'\\)\\)\")",
       "Bash(curl -s -m 5 http://localhost:3000/api/health)",
       "Bash(curl -s -m 8 -X POST http://localhost:3000/api/auth/sign-up/email -H \"Content-Type: application/json\" -d '{\"name\":\"Test Teacher\",\"email\":\"teacher@example.com\",\"password\":\"supersecret123\"}' -w \"\\\\n[http %{http_code}]\\\\n\")",
-      "Bash(bun test *)"
+      "Bash(bun test *)",
+      "Bash(bunx tsc *)"
     ]
   }
 }

@@ -3,13 +3,15 @@
  * authenticated teacher; authorization is enforced here, server-side.
  */
 import { z } from 'zod';
-import { error, HttpError, json, readJson } from '../lib/http';
-import { requireTeacher } from '../lib/session';
+import { csv, error, HttpError, json, readJson } from '../lib/http';
+import { requireAdmin, requireTeacher } from '../lib/session';
 import { createVideoSchema, updateVideoSchema } from '../schemas/video';
 import {
   createVideo,
   deleteVideo,
+  exportVideosToCsv,
   getVideo,
+  importVideosFromCsv,
   listVideos,
   updateVideo,
 } from '../services/videos';
@@ -27,6 +29,20 @@ function validationError(err: z.ZodError): Response {
 export async function handleVideoRoutes(req: Request, url: URL): Promise<Response | null> {
   const segments = url.pathname.split('/').filter(Boolean); // ["api","videos", ...]
   if (segments[0] !== 'api' || segments[1] !== 'videos') return null;
+
+  // Admin-only CSV import/export (TECHNICAL_SPEC.md §3.5).
+  if (segments.length === 3 && segments[2] === 'import') {
+    const admin = await requireAdmin(req);
+    if (req.method !== 'POST') return error('method_not_allowed', `${req.method} not allowed`, 405);
+    const text = await req.text();
+    if (!text.trim()) return error('invalid_csv', 'Empty CSV body', 400);
+    return json(importVideosFromCsv(admin.id, text));
+  }
+  if (segments.length === 3 && segments[2] === 'export') {
+    await requireAdmin(req);
+    if (req.method !== 'GET') return error('method_not_allowed', `${req.method} not allowed`, 405);
+    return csv(exportVideosToCsv(), 'aikido-videos.csv');
+  }
 
   const teacher = await requireTeacher(req);
   const id = segments[2];

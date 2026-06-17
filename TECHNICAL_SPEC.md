@@ -126,6 +126,32 @@ better-auth-generated schema and the domain schema. Run them in one
   guards are UX only.
 - **Database:** one SQLite file holding auth + domain tables.
 
+### 3.5 CSV Import/Export (admin-only)
+
+Bulk-manages the video library via CSV. **Admin-only** — gated by `requireAdmin`,
+a stricter check than `requireTeacher`. Admins are defined by an email allowlist
+(`ADMIN_EMAILS`, comma-separated; falls back to the seed `ADMIN_EMAIL`). The
+frontend exposes the buttons only when `/api/me` reports `isAdmin: true`; the
+server enforces it regardless.
+
+**Import** — `POST /api/videos/import` (body: raw CSV text):
+- The header row must contain `name` and `url` columns (case-insensitive).
+- `name` → video title; `url` → `youtube_url` (parsed/validated to a video ID).
+- **Every other column is treated as keywords**: each cell is split on `;`,
+  trimmed, and empty values dropped (so exported keyword cells round-trip).
+- Keywords are upserted case-insensitively and deduped (existing canonical casing
+  wins).
+- Rows with a missing name or an unparseable YouTube URL are **skipped and
+  reported**. Response: `{ created, skipped, errors: [{ row, name, reason }] }`.
+- Note: import always creates; it does not dedupe against existing videos, so
+  re-importing the same file adds duplicates.
+
+**Export** — `GET /api/videos/export` → `text/csv` download:
+- Columns: `name,url,keywords` where keywords are `;`-joined (alphabetical).
+- Standard CSV quoting (fields with commas/quotes/newlines are quoted).
+
+CSV parsing/serialization is dependency-free (`server/lib/csv.ts`, RFC 4180-style).
+
 ---
 
 ## 4. Data Model
@@ -317,8 +343,11 @@ actively-shared content.
 ### 7.3 Teacher (authenticated)
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/videos` | List all videos (admin) |
+| GET | `/api/me` | Current user + `isAdmin` flag (null if unauthenticated) |
+| GET | `/api/videos` | List all videos |
 | POST | `/api/videos` | Create video entry |
+| POST | `/api/videos/import` | **Admin-only.** Import videos from CSV (§3.5) |
+| GET | `/api/videos/export` | **Admin-only.** Export all videos as CSV (§3.5) |
 | GET | `/api/videos/:id` | Get one |
 | PATCH | `/api/videos/:id` | Update |
 | DELETE | `/api/videos/:id` | Delete (cascades keywords join, shares) |
@@ -462,6 +491,7 @@ aikido_video_project/
 2. **Foundations:** project scaffold, Tailwind, DB schema/migrations, better-auth
    sign-in, auth guard.
 3. **Video CRUD:** create/read/update/delete + keyword management + YouTube parsing.
+3.5. **CSV import/export (admin-only):** see §3.5.
 4. **TipTap editor:** restricted toolbar, JSON persistence, plaintext mirror, render.
 5. **Sharing:** video shares (share/unshare), public `/v/:token` + `/videos` browse.
 6. **Filter lists:** CRUD, `criteria_json`, list sharing, public `/list/:token`.

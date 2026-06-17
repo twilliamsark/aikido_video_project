@@ -95,3 +95,39 @@ describe('video service CRUD + keywords', () => {
     expect(results).toContain('Ikkyo');
   });
 });
+
+describe('CSV import/export', () => {
+  // Keyword values chosen so they don't collide with earlier tests' keywords
+  // (which would reuse the existing canonical casing).
+  const csv =
+    'name,format,technique,direction,attack,url\n' +
+    'Aihanmi Shihonage,Tiado,Shihonage,Ura,Katatedori,https://www.youtube.com/watch?v=Z-FwOJQi1_c\n' +
+    'Bad Row,Tiado,Nikyo,Ura,Katatedori,\n' + // missing url -> skipped
+    'Yokomenuchi Gokyo,Tiado,Gokyo,Ura,Yokomenuchi,https://youtu.be/d9jxteuqlXw\n';
+
+  test('imports rows, mapping non name/url columns to keywords and skipping invalid', () => {
+    const result = svc.importVideosFromCsv('teacher-1', csv);
+    expect(result.created).toBe(2);
+    expect(result.skipped).toBe(1);
+    expect(result.errors[0]).toMatchObject({ name: 'Bad Row', reason: 'Missing url' });
+
+    const imported = svc.listVideos().find((v) => v.title === 'Aihanmi Shihonage')!;
+    // Cell values from the non name/url columns become keywords (sorted).
+    expect(imported.keywords).toEqual(['Katatedori', 'Shihonage', 'Tiado', 'Ura']);
+  });
+
+  test('export produces name,url,keywords with ;-joined keywords and round-trips', () => {
+    const out = svc.exportVideosToCsv();
+    const lines = out.trim().split('\n');
+    expect(lines[0]).toBe('name,url,keywords');
+
+    const row = lines.find((l) => l.startsWith('Aihanmi Shihonage,'))!;
+    expect(row).toBe(
+      'Aihanmi Shihonage,https://www.youtube.com/watch?v=Z-FwOJQi1_c,Katatedori;Shihonage;Tiado;Ura',
+    );
+  });
+
+  test('rejects CSV without name/url columns', () => {
+    expect(() => svc.importVideosFromCsv('teacher-1', 'foo,bar\n1,2\n')).toThrow();
+  });
+});

@@ -11,6 +11,7 @@ import { keywords, videoEntries, videoKeywords } from '../db/schema';
 import { embedUrl, parseYouTubeId } from '../lib/youtube';
 import { extractPlainText } from '../lib/tiptap';
 import { HttpError } from '../lib/http';
+import { parseCsv, toCsv } from '../lib/csv';
 import type { CreateVideoInput, UpdateVideoInput } from '../schemas/video';
 
 export interface VideoDto {
@@ -182,6 +183,78 @@ export function deleteVideo(id: string): boolean {
   // Cascade removes video_keywords and video_shares rows (FK ON DELETE CASCADE).
   db.delete(videoEntries).where(eq(videoEntries.id, id)).run();
   return true;
+}
+
+export interface ImportResult {
+  created: number;
+  skipped: number;
+  errors: { row: number; name: string; reason: string }[];
+}
+
+/**
+ * Imports videos from CSV (TECHNICAL_SPEC.md §3.5).
+ *
+ * The header row must contain `name` and `url` columns (case-insensitive). Every
+ * other column is treated as keywords: each cell is split on ';' so that values
+ * exported by {@link exportVideosToCsv} round-trip. Rows with a missing name or an
+ * unparseable YouTube URL are skipped and reported.
+ */
+export function importVideosFromCsv(userId: string, csvText: string): ImportResult {
+  const rows = parseCsv(csvText).filter((r) => r.some((c) => c.trim() !== ''));
+  const result: ImportResult = { created: 0, skipped: 0, errors: [] };
+  if (rows.length < 2) return result;
+
+  const header = rows[0]!.map((h) => h.trim());
+  const lower = header.map((h) => h.toLowerCase());
+  const nameIdx = lower.indexOf('name');
+  const urlIdx = lower.indexOf('url');
+  if (nameIdx === -1 || urlIdx === -1) {
+    throw new HttpError(400, 'invalid_csv', 'CSV must include "name" and "url" columns');
+  }
+
+  for (let r = 1; r < rows.length; r++) {
+    const cells = rows[r]!;
+    const rowNumber = r + 1; // 1-based, including the header row
+    const name = (cells[nameIdx] ?? '').trim();
+    const url = (cells[urlIdx] ?? '').trim();
+
+    const keywords = header
+      .flatMap((_, i) => (i === nameIdx || i === urlIdx ? [] : (cells[i] ?? '').split(';')))
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
+
+    if (!name) {
+      result.skipped++;
+      result.errors.push({ row: rowNumber, name: '(blank)', reason: 'Missing name' });
+      continue;
+    }
+    if (!url) {
+      result.skipped++;
+      result.errors.push({ row: rowNumber, name, reason: 'Missing url' });
+      continue;
+    }
+    try {
+      createVideo(userId, { title: name, youtubeUrl: url, keywords });
+      result.created++;
+    } catch (err) {
+      result.skipped++;
+      result.errors.push({
+        row: rowNumber,
+        name,
+        reason: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  }
+  return result;
+}
+
+/** Exports all videos as CSV with columns: name, url, keywords (';'-joined). */
+export function exportVideosToCsv(): string {
+  const rows: string[][] = [['name', 'url', 'keywords']];
+  for (const v of listVideos()) {
+    rows.push([v.title, v.youtubeUrl, v.keywords.join(';')]);
+  }
+  return toCsv(rows);
 }
 
 /** Keyword autocomplete: labels matching an optional prefix/substring query. */

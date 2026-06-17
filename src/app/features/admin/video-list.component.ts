@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { VideoService } from '../../core/video.service';
 import { Video } from '../../core/models';
@@ -17,6 +18,28 @@ import { Video } from '../../core/models';
           <p class="text-sm text-gray-500">Signed in as {{ auth.user()?.email }}</p>
         </div>
         <div class="flex items-center gap-3">
+          @if (auth.isAdmin()) {
+            <button
+              (click)="fileInput.click()"
+              [disabled]="importing()"
+              class="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {{ importing() ? 'Importing…' : 'Import CSV' }}
+            </button>
+            <input
+              #fileInput
+              type="file"
+              accept=".csv,text/csv"
+              class="hidden"
+              (change)="onImportFile($event)"
+            />
+            <button
+              (click)="exportCsv()"
+              class="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Export CSV
+            </button>
+          }
           <a
             routerLink="/admin/videos/new"
             class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
@@ -31,6 +54,12 @@ import { Video } from '../../core/models';
           </button>
         </div>
       </header>
+
+      @if (importSummary()) {
+        <div class="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+          {{ importSummary() }}
+        </div>
+      }
 
       @if (loading()) {
         <p class="text-gray-500">Loading…</p>
@@ -95,6 +124,8 @@ export class VideoListComponent {
   protected readonly videos = signal<Video[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMsg = signal<string | null>(null);
+  protected readonly importing = signal(false);
+  protected readonly importSummary = signal<string | null>(null);
 
   constructor() {
     this.reload();
@@ -119,6 +150,49 @@ export class VideoListComponent {
     this.videoService.remove(video.id).subscribe({
       next: () => this.videos.update((list) => list.filter((v) => v.id !== video.id)),
       error: () => this.errorMsg.set('Failed to delete video.'),
+    });
+  }
+
+  async onImportFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.importing.set(true);
+    this.importSummary.set(null);
+    this.errorMsg.set(null);
+    try {
+      const text = await file.text();
+      const result = await firstValueFrom(this.videoService.importCsv(text));
+      let summary = `Imported ${result.created} video(s); skipped ${result.skipped}.`;
+      if (result.errors.length) {
+        const preview = result.errors
+          .slice(0, 5)
+          .map((e) => `row ${e.row} (${e.name}): ${e.reason}`)
+          .join('; ');
+        summary += ` Issues: ${preview}${result.errors.length > 5 ? '…' : ''}`;
+      }
+      this.importSummary.set(summary);
+      this.reload();
+    } catch {
+      this.errorMsg.set('Import failed. Check the CSV has "name" and "url" columns.');
+    } finally {
+      this.importing.set(false);
+      input.value = ''; // allow re-importing the same file
+    }
+  }
+
+  exportCsv(): void {
+    this.videoService.exportCsv().subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'aikido-videos.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.errorMsg.set('Export failed.'),
     });
   }
 

@@ -27,6 +27,19 @@ export function error(code: string, message: string, status: number): Response {
   return json({ error: { code, message } }, status);
 }
 
+/** Returns a CSV file response with a download filename. */
+export function csv(body: string, filename: string): Response {
+  return withCors(
+    new Response(body, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    }),
+  );
+}
+
 /** Thrown by handlers to short-circuit with a specific HTTP error response. */
 export class HttpError extends Error {
   constructor(

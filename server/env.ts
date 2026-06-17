@@ -19,5 +19,14 @@ export const env = {
   /** Origin allowed to call the API with credentials (the Angular dev server). */
   webOrigin: process.env['WEB_ORIGIN'] ?? 'http://localhost:4200',
 
+  /**
+   * Emails granted admin privileges (CSV import/export). Comma-separated via
+   * ADMIN_EMAILS; falls back to the seeded ADMIN_EMAIL, then the dev default.
+   */
+  adminEmails: (process.env['ADMIN_EMAILS'] ?? process.env['ADMIN_EMAIL'] ?? 'admin@dojo.test')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+
   isProduction: process.env['NODE_ENV'] === 'production',
 } as const;
