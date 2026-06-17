@@ -76,6 +76,7 @@ import { Video } from '../../core/models';
             <tr class="border-b border-gray-200 text-gray-500">
               <th class="py-2 pr-4 font-medium">Title</th>
               <th class="py-2 pr-4 font-medium">Keywords</th>
+              <th class="py-2 pr-4 font-medium">Sharing</th>
               <th class="py-2 pr-4 font-medium">Added</th>
               <th class="py-2 font-medium"></th>
             </tr>
@@ -90,6 +91,25 @@ import { Video } from '../../core/models';
                       <span class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{{ kw }}</span>
                     }
                   </span>
+                </td>
+                <td class="py-3 pr-4">
+                  @if (video.shared) {
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                        <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> Shared
+                      </span>
+                      <button (click)="copyLink(video)" class="text-xs text-indigo-600 hover:underline">
+                        {{ copiedId() === video.id ? 'Copied!' : 'Copy link' }}
+                      </button>
+                      <button (click)="toggleShare(video)" class="text-xs text-gray-500 hover:underline">
+                        Unshare
+                      </button>
+                    </div>
+                  } @else {
+                    <button (click)="toggleShare(video)" class="text-xs text-indigo-600 hover:underline">
+                      Share
+                    </button>
+                  }
                 </td>
                 <td class="py-3 pr-4 text-gray-500">{{ video.createdAt | date: 'mediumDate' }}</td>
                 <td class="py-3 text-right">
@@ -126,6 +146,7 @@ export class VideoListComponent {
   protected readonly errorMsg = signal<string | null>(null);
   protected readonly importing = signal(false);
   protected readonly importSummary = signal<string | null>(null);
+  protected readonly copiedId = signal<string | null>(null);
 
   constructor() {
     this.reload();
@@ -151,6 +172,29 @@ export class VideoListComponent {
       next: () => this.videos.update((list) => list.filter((v) => v.id !== video.id)),
       error: () => this.errorMsg.set('Failed to delete video.'),
     });
+  }
+
+  toggleShare(video: Video): void {
+    const req$ = video.shared
+      ? this.videoService.unshare(video.id)
+      : this.videoService.share(video.id);
+    req$.subscribe({
+      next: (share) =>
+        this.videos.update((list) =>
+          list.map((v) =>
+            v.id === video.id ? { ...v, shared: share.active, shareToken: share.token } : v,
+          ),
+        ),
+      error: () => this.errorMsg.set('Failed to update sharing.'),
+    });
+  }
+
+  copyLink(video: Video): void {
+    if (!video.shareToken) return;
+    const url = `${location.origin}/v/${video.shareToken}`;
+    navigator.clipboard?.writeText(url);
+    this.copiedId.set(video.id);
+    setTimeout(() => this.copiedId.set(null), 1500);
   }
 
   async onImportFile(event: Event): Promise<void> {

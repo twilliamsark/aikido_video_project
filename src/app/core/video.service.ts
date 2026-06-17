@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { ImportResult, Video, VideoInput } from './models';
+import { ImportResult, ShareInfo, Video, VideoInput } from './models';
 
 /** Teacher-facing video CRUD client (TECHNICAL_SPEC.md §7.3). */
 @Injectable({ providedIn: 'root' })
@@ -46,5 +46,19 @@ export class VideoService {
   /** Admin-only: download all videos as a CSV blob. */
   exportCsv(): Observable<Blob> {
     return this.http.get('/api/videos/export', { responseType: 'blob' });
+  }
+
+  /** Share a video (create or reactivate its link). */
+  share(id: string): Observable<ShareInfo> {
+    return this.http
+      .post<{ share: ShareInfo }>(`/api/videos/${id}/share`, {})
+      .pipe(map((r) => r.share));
+  }
+
+  /** Stop sharing a video (deactivate the link; token preserved). */
+  unshare(id: string): Observable<ShareInfo> {
+    return this.http
+      .post<{ share: ShareInfo }>(`/api/videos/${id}/unshare`, {})
+      .pipe(map((r) => r.share));
   }
 }

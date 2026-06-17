@@ -2,7 +2,19 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'admin/videos', pathMatch: 'full' },
+  { path: '', redirectTo: 'videos', pathMatch: 'full' },
+  {
+    path: 'videos',
+    loadComponent: () =>
+      import('./features/public/public-video-list.component').then(
+        (m) => m.PublicVideoListComponent,
+      ),
+  },
+  {
+    path: 'v/:token',
+    loadComponent: () =>
+      import('./features/public/public-video.component').then((m) => m.PublicVideoComponent),
+  },
   {
     path: 'login',
     loadComponent: () =>
@@ -26,6 +38,6 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/admin/video-form.component').then((m) => m.VideoFormComponent),
   },
-  // Public student-facing routes (/videos, /v/:token, /list/:token) arrive in later milestones.
-  { path: '**', redirectTo: 'admin/videos' },
+  // Shared filter-list route (/list/:token) arrives in milestone 6.
+  { path: '**', redirectTo: 'videos' },
 ];

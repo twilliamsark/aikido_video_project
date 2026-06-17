@@ -161,3 +161,61 @@ describe('CSV import/export', () => {
     expect(() => svc.importVideosFromCsv('teacher-1', 'foo,bar\n1,2\n')).toThrow();
   });
 });
+
+describe('sharing & public access', () => {
+  let videoId: string;
+
+  beforeAll(() => {
+    videoId = svc.createVideo('teacher-1', {
+      title: 'Share Me',
+      youtubeUrl: 'https://youtu.be/SHAREvideo1',
+      keywords: ['share'],
+    }).id;
+  });
+
+  test('a new video is not public until shared', () => {
+    expect(svc.getVideo(videoId)!.shared).toBe(false);
+    const before = svc.listPublicVideos().videos.find((v) => v.id === videoId);
+    expect(before).toBeUndefined();
+  });
+
+  test('sharing creates a token and exposes the video publicly', () => {
+    const share = svc.shareVideo(videoId, 'teacher-1');
+    expect(share.active).toBe(true);
+    expect(share.token).toHaveLength(22);
+
+    const dto = svc.getVideo(videoId)!;
+    expect(dto.shared).toBe(true);
+    expect(dto.shareToken).toBe(share.token);
+
+    const pub = svc.getPublicVideoByToken(share.token);
+    expect(pub?.title).toBe('Share Me');
+    // Public DTO omits owner/plaintext.
+    expect((pub as unknown as Record<string, unknown>)['createdBy']).toBeUndefined();
+  });
+
+  test('re-sharing reuses the same stable token', () => {
+    const first = svc.getVideo(videoId)!.shareToken!;
+    svc.unshareVideo(videoId);
+    const reshared = svc.shareVideo(videoId, 'teacher-1');
+    expect(reshared.token).toBe(first);
+  });
+
+  test('unsharing hides the video and 404s the token', () => {
+    const token = svc.getVideo(videoId)!.shareToken!;
+    svc.unshareVideo(videoId);
+
+    expect(svc.getVideo(videoId)!.shared).toBe(false);
+    expect(svc.getPublicVideoByToken(token)).toBeNull();
+    expect(svc.listPublicVideos().videos.find((v) => v.id === videoId)).toBeUndefined();
+  });
+
+  test('public list is paginated with a total count', () => {
+    svc.shareVideo(videoId, 'teacher-1');
+    const result = svc.listPublicVideos(1, 10);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(10);
+    expect(result.total).toBeGreaterThanOrEqual(1);
+    expect(result.videos.length).toBeLessThanOrEqual(10);
+  });
+});

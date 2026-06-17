@@ -5,13 +5,14 @@
  * join table. The `description_text` plaintext mirror is derived from the TipTap
  * JSON (or a directly-supplied plaintext description) on every write.
  */
-import { desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client';
-import { keywords, videoEntries, videoKeywords } from '../db/schema';
+import { keywords, videoEntries, videoKeywords, videoShares } from '../db/schema';
 import { embedUrl, parseYouTubeId } from '../lib/youtube';
 import { extractPlainText } from '../lib/tiptap';
 import { HttpError } from '../lib/http';
 import { parseCsv, toCsv } from '../lib/csv';
+import { randomToken } from '../lib/token';
 import type { CreateVideoInput, UpdateVideoInput } from '../schemas/video';
 
 export interface VideoDto {
@@ -23,9 +24,30 @@ export interface VideoDto {
   descriptionJson: unknown | null;
   descriptionText: string | null;
   keywords: string[];
+  /** True if this video has an active share link (TECHNICAL_SPEC.md §5). */
+  shared: boolean;
+  /** The (stable) share token, present once a share has ever been created. */
+  shareToken: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Public-facing video shape: no owner/plaintext, includes the share token. */
+export interface PublicVideoDto {
+  id: string;
+  title: string;
+  youtubeVideoId: string;
+  embedUrl: string;
+  descriptionJson: unknown | null;
+  keywords: string[];
+  shareToken: string;
+  createdAt: string;
+}
+
+export interface ShareInfo {
+  token: string;
+  active: boolean;
 }
 
 /** Resolves the description JSON + plaintext mirror from a write payload. */
@@ -97,7 +119,26 @@ function keywordsByVideo(videoIds: string[]): Map<string, string[]> {
 
 type VideoRow = typeof videoEntries.$inferSelect;
 
-function toDto(row: VideoRow, kw: string[]): VideoDto {
+/** Loads the share row (if any) for a set of video ids, keyed by video id. */
+function sharesByVideo(videoIds: string[]): Map<string, ShareInfo> {
+  const map = new Map<string, ShareInfo>();
+  if (!videoIds.length) return map;
+  const rows = db
+    .select({
+      videoId: videoShares.videoId,
+      token: videoShares.shareToken,
+      active: videoShares.active,
+    })
+    .from(videoShares)
+    .where(inArray(videoShares.videoId, videoIds))
+    .all();
+  for (const row of rows) {
+    map.set(row.videoId, { token: row.token, active: row.active });
+  }
+  return map;
+}
+
+function toDto(row: VideoRow, kw: string[], share: ShareInfo | undefined): VideoDto {
   return {
     id: row.id,
     title: row.title,
@@ -107,6 +148,8 @@ function toDto(row: VideoRow, kw: string[]): VideoDto {
     descriptionJson: row.descriptionJson ? JSON.parse(row.descriptionJson) : null,
     descriptionText: row.descriptionText,
     keywords: kw.sort((a, b) => a.localeCompare(b)),
+    shared: share?.active ?? false,
+    shareToken: share?.token ?? null,
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -115,14 +158,16 @@ function toDto(row: VideoRow, kw: string[]): VideoDto {
 
 export function listVideos(): VideoDto[] {
   const rows = db.select().from(videoEntries).orderBy(desc(videoEntries.createdAt)).all();
-  const kw = keywordsByVideo(rows.map((r) => r.id));
-  return rows.map((r) => toDto(r, kw.get(r.id) ?? []));
+  const ids = rows.map((r) => r.id);
+  const kw = keywordsByVideo(ids);
+  const shares = sharesByVideo(ids);
+  return rows.map((r) => toDto(r, kw.get(r.id) ?? [], shares.get(r.id)));
 }
 
 export function getVideo(id: string): VideoDto | null {
   const row = db.select().from(videoEntries).where(eq(videoEntries.id, id)).get();
   if (!row) return null;
-  return toDto(row, keywordsByVideo([id]).get(id) ?? []);
+  return toDto(row, keywordsByVideo([id]).get(id) ?? [], sharesByVideo([id]).get(id));
 }
 
 export function createVideo(userId: string, input: CreateVideoInput): VideoDto {
@@ -284,6 +329,117 @@ export function exportVideosToCsv(): string {
     rows.push([v.title, v.youtubeUrl, v.keywords.join(';')]);
   }
   return toCsv(rows);
+}
+
+// ---------------------------------------------------------------------------
+// Sharing & public access (TECHNICAL_SPEC.md §5, §7.2)
+// ---------------------------------------------------------------------------
+
+/** Returns the share row for a video, or null if it has never been shared. */
+export function getShareInfo(videoId: string): ShareInfo | null {
+  return sharesByVideo([videoId]).get(videoId) ?? null;
+}
+
+/**
+ * Shares a video: creates a share row if none exists, or reactivates the
+ * existing one. The token is generated once and reused across toggles so a
+ * previously distributed URL keeps working (TECHNICAL_SPEC.md §5.1).
+ */
+export function shareVideo(videoId: string, userId: string): ShareInfo {
+  const existing = db
+    .select()
+    .from(videoShares)
+    .where(eq(videoShares.videoId, videoId))
+    .get();
+  if (existing) {
+    if (!existing.active) {
+      db.update(videoShares)
+        .set({ active: true, updatedAt: new Date().toISOString() })
+        .where(eq(videoShares.id, existing.id))
+        .run();
+    }
+    return { token: existing.shareToken, active: true };
+  }
+  const token = randomToken();
+  db.insert(videoShares)
+    .values({ videoId, shareToken: token, active: true, createdBy: userId })
+    .run();
+  return { token, active: true };
+}
+
+/** Stops sharing a video by deactivating its share row (token preserved). */
+export function unshareVideo(videoId: string): ShareInfo | null {
+  const existing = db
+    .select()
+    .from(videoShares)
+    .where(eq(videoShares.videoId, videoId))
+    .get();
+  if (!existing) return null;
+  if (existing.active) {
+    db.update(videoShares)
+      .set({ active: false, updatedAt: new Date().toISOString() })
+      .where(eq(videoShares.id, existing.id))
+      .run();
+  }
+  return { token: existing.shareToken, active: false };
+}
+
+function toPublicDto(row: VideoRow, kw: string[], shareToken: string): PublicVideoDto {
+  return {
+    id: row.id,
+    title: row.title,
+    youtubeVideoId: row.youtubeVideoId,
+    embedUrl: embedUrl(row.youtubeVideoId),
+    descriptionJson: row.descriptionJson ? JSON.parse(row.descriptionJson) : null,
+    keywords: kw.sort((a, b) => a.localeCompare(b)),
+    shareToken,
+    createdAt: row.createdAt,
+  };
+}
+
+export interface PublicListResult {
+  videos: PublicVideoDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Lists actively-shared videos, newest first, paginated (TECHNICAL_SPEC.md §6). */
+export function listPublicVideos(page = 1, pageSize = 24): PublicListResult {
+  const offset = (Math.max(1, page) - 1) * pageSize;
+  const activeShares = and(eq(videoShares.active, true));
+
+  const total = db
+    .select({ n: sql<number>`count(*)` })
+    .from(videoShares)
+    .where(activeShares)
+    .get()!.n;
+
+  const rows = db
+    .select({ video: videoEntries, token: videoShares.shareToken })
+    .from(videoShares)
+    .innerJoin(videoEntries, eq(videoShares.videoId, videoEntries.id))
+    .where(activeShares)
+    .orderBy(desc(videoEntries.createdAt))
+    .limit(pageSize)
+    .offset(offset)
+    .all();
+
+  const kw = keywordsByVideo(rows.map((r) => r.video.id));
+  const videos = rows.map((r) => toPublicDto(r.video, kw.get(r.video.id) ?? [], r.token));
+  return { videos, total, page: Math.max(1, page), pageSize };
+}
+
+/** Resolves a public video by its share token, or null if unknown/inactive. */
+export function getPublicVideoByToken(token: string): PublicVideoDto | null {
+  const row = db
+    .select({ video: videoEntries, token: videoShares.shareToken })
+    .from(videoShares)
+    .innerJoin(videoEntries, eq(videoShares.videoId, videoEntries.id))
+    .where(and(eq(videoShares.shareToken, token), eq(videoShares.active, true)))
+    .get();
+  if (!row) return null;
+  return toPublicDto(row.video, keywordsByVideo([row.video.id]).get(row.video.id) ?? [], row.token);
 }
 
 /** Keyword autocomplete: labels matching an optional prefix/substring query. */

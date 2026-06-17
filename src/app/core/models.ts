@@ -24,9 +24,35 @@ export interface Video {
   descriptionJson: unknown | null;
   descriptionText: string | null;
   keywords: string[];
+  shared: boolean;
+  shareToken: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Public-facing video (TECHNICAL_SPEC.md §7.2): no owner/plaintext fields. */
+export interface PublicVideo {
+  id: string;
+  title: string;
+  youtubeVideoId: string;
+  embedUrl: string;
+  descriptionJson: unknown | null;
+  keywords: string[];
+  shareToken: string;
+  createdAt: string;
+}
+
+export interface PublicVideoList {
+  videos: PublicVideo[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ShareInfo {
+  token: string | null;
+  active: boolean;
 }
 
 /** Payload for creating/updating a video. Description is a TipTap JSON document. */

@@ -13,6 +13,8 @@ import {
   getVideo,
   importVideosFromCsv,
   listVideos,
+  shareVideo,
+  unshareVideo,
   updateVideo,
 } from '../services/videos';
 
@@ -78,6 +80,18 @@ export async function handleVideoRoutes(req: Request, url: URL): Promise<Respons
         : error('not_found', 'Video not found', 404);
     }
     return error('method_not_allowed', `${req.method} not allowed`, 405);
+  }
+
+  // Share actions: /api/videos/:id/share | /api/videos/:id/unshare
+  if (segments.length === 4 && (segments[3] === 'share' || segments[3] === 'unshare')) {
+    if (req.method !== 'POST') return error('method_not_allowed', `${req.method} not allowed`, 405);
+    if (!getVideo(id)) return error('not_found', 'Video not found', 404);
+
+    if (segments[3] === 'share') {
+      return json({ share: shareVideo(id, teacher.id) });
+    }
+    const share = unshareVideo(id);
+    return json({ share: share ?? { token: null, active: false } });
   }
 
   throw new HttpError(404, 'not_found', 'Not found');

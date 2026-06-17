@@ -11,10 +11,16 @@ import { error, HttpError, json, withCors } from './lib/http';
 import { handleVideoRoutes } from './routes/videos';
 import { handleKeywordRoutes } from './routes/keywords';
 import { handleMeRoute } from './routes/me';
+import { handlePublicRoutes } from './routes/public';
 
 type RouteHandler = (req: Request, url: URL) => Promise<Response | null>;
 
-const routes: RouteHandler[] = [handleMeRoute, handleVideoRoutes, handleKeywordRoutes];
+const routes: RouteHandler[] = [
+  handlePublicRoutes,
+  handleMeRoute,
+  handleVideoRoutes,
+  handleKeywordRoutes,
+];
 
 const server = Bun.serve({
   port: env.port,
