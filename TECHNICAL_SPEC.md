@@ -287,7 +287,8 @@ description.
 | URL | Resolves to |
 |-----|-------------|
 | `/v/:shareToken` | Single shared video player + description |
-| `/list/:shareToken` | A shared filtered list view (applies `criteria_json`) |
+| `/list/:shareToken` | A shared filtered list view (criteria over the whole library) |
+| `/list/:shareToken/v/:videoId` | Play a video reached through a shared list |
 | `/videos` | Public browse of all actively shared videos |
 
 Server returns **404** for unknown or inactive tokens (do not distinguish the two,
@@ -323,8 +324,14 @@ the description plaintext), though different terms may match in different fields
 }
 ```
 
-A shared filter list applies these criteria server-side against the actively-shared
-video set and renders the list description above the results.
+A shared filter list applies these criteria server-side against the **entire video
+library** (not just individually-shared videos) and renders the list description
+above the results. **The list's share link is itself the authorization**: a video
+that matches a shared list's criteria is viewable through that list at
+`/list/:token/v/:videoId`, even if it was never individually shared. Playback is
+scoped to the list — the server re-checks, on each request, that the list is
+active and the video still matches its criteria. (The `/videos` catalog remains
+limited to individually-shared videos.)
 
 ---
 

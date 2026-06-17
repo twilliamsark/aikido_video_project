@@ -457,11 +457,60 @@ export const DEFAULT_CRITERIA: FilterCriteria = {
   sort: { field: 'createdAt', dir: 'desc' },
 };
 
+/** A video reachable through a shared filter list (no individual share token). */
+export interface ListVideoDto {
+  id: string;
+  title: string;
+  youtubeVideoId: string;
+  embedUrl: string;
+  descriptionJson: unknown | null;
+  keywords: string[];
+  createdAt: string;
+}
+
+function toListDto(row: VideoRow, kw: string[]): ListVideoDto {
+  return {
+    id: row.id,
+    title: row.title,
+    youtubeVideoId: row.youtubeVideoId,
+    embedUrl: embedUrl(row.youtubeVideoId),
+    descriptionJson: row.descriptionJson ? JSON.parse(row.descriptionJson) : null,
+    keywords: kw.sort((a, b) => a.localeCompare(b)),
+    createdAt: row.createdAt,
+  };
+}
+
+/**
+ * Builds a predicate for a criteria: a video matches when every query term
+ * appears in its title, a keyword, or the description plaintext (terms may match
+ * different fields), AND it has every required keyword (TECHNICAL_SPEC.md §6).
+ */
+function buildMatcher(
+  criteria: FilterCriteria,
+): (title: string, labels: string[], descriptionText: string | null) => boolean {
+  const terms = (criteria.query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+  const required = criteria.keywords.map((k) => k.toLowerCase());
+  return (title, labels, descriptionText) => {
+    const haystack = [title, labels.join(' '), descriptionText ?? ''].join(' ').toLowerCase();
+    const termsOk = terms.every((t) => haystack.includes(t));
+    const labelSet = new Set(labels.map((l) => l.toLowerCase()));
+    return termsOk && required.every((k) => labelSet.has(k));
+  };
+}
+
+function criteriaComparator(
+  criteria: FilterCriteria,
+): (a: { title: string; createdAt: string }, b: { title: string; createdAt: string }) => number {
+  const dir = criteria.sort.dir === 'asc' ? 1 : -1;
+  return (a, b) =>
+    criteria.sort.field === 'title'
+      ? dir * a.title.localeCompare(b.title)
+      : dir * a.createdAt.localeCompare(b.createdAt);
+}
+
 /**
  * Resolves a filter over the actively-shared catalog (TECHNICAL_SPEC.md §6).
- * A video matches when every query term appears in its title, a keyword, or the
- * description plaintext (terms may match different fields), AND it has every
- * required keyword. Filtering is done in memory — the shared set is small.
+ * Used by the public /videos browse filter; each result carries its own share token.
  */
 export function queryPublicVideos(criteria: FilterCriteria): PublicVideoDto[] {
   const rows = db
@@ -472,28 +521,40 @@ export function queryPublicVideos(criteria: FilterCriteria): PublicVideoDto[] {
     .all();
 
   const kw = keywordsByVideo(rows.map((r) => r.video.id));
-  const terms = (criteria.query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
-  const required = criteria.keywords.map((k) => k.toLowerCase());
+  const match = buildMatcher(criteria);
+  const cmp = criteriaComparator(criteria);
 
-  const matched = rows.filter((r) => {
-    const labels = kw.get(r.video.id) ?? [];
-    const haystack = [r.video.title, labels.join(' '), r.video.descriptionText ?? '']
-      .join(' ')
-      .toLowerCase();
-    const termsOk = terms.every((t) => haystack.includes(t));
-    const labelSet = new Set(labels.map((l) => l.toLowerCase()));
-    const keywordsOk = required.every((k) => labelSet.has(k));
-    return termsOk && keywordsOk;
-  });
+  return rows
+    .filter((r) => match(r.video.title, kw.get(r.video.id) ?? [], r.video.descriptionText))
+    .sort((a, b) => cmp(a.video, b.video))
+    .map((r) => toPublicDto(r.video, kw.get(r.video.id) ?? [], r.token));
+}
 
-  const dir = criteria.sort.dir === 'asc' ? 1 : -1;
-  matched.sort((a, b) =>
-    criteria.sort.field === 'title'
-      ? dir * a.video.title.localeCompare(b.video.title)
-      : dir * a.video.createdAt.localeCompare(b.video.createdAt),
-  );
+/**
+ * Resolves a filter over the ENTIRE library (TECHNICAL_SPEC.md §6) — used by
+ * shared filter lists, where the list's share link (not per-video sharing)
+ * authorizes access to the matching videos.
+ */
+export function queryAllVideos(criteria: FilterCriteria): ListVideoDto[] {
+  const rows = db.select().from(videoEntries).all();
+  const kw = keywordsByVideo(rows.map((r) => r.id));
+  const match = buildMatcher(criteria);
+  return rows
+    .filter((r) => match(r.title, kw.get(r.id) ?? [], r.descriptionText))
+    .sort(criteriaComparator(criteria))
+    .map((r) => toListDto(r, kw.get(r.id) ?? []));
+}
 
-  return matched.map((r) => toPublicDto(r.video, kw.get(r.video.id) ?? [], r.token));
+/**
+ * Returns a single video by id only if it matches the given criteria — the
+ * authorization check for playing a video through a shared filter list.
+ */
+export function getMatchingListVideo(videoId: string, criteria: FilterCriteria): ListVideoDto | null {
+  const row = db.select().from(videoEntries).where(eq(videoEntries.id, videoId)).get();
+  if (!row) return null;
+  const labels = keywordsByVideo([videoId]).get(videoId) ?? [];
+  if (!buildMatcher(criteria)(row.title, labels, row.descriptionText)) return null;
+  return toListDto(row, labels);
 }
 
 /** Keyword autocomplete: labels matching an optional prefix/substring query. */

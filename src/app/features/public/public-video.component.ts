@@ -2,23 +2,33 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PublicVideoService } from '../../core/public-video.service';
-import { PublicVideo } from '../../core/models';
 import { RichTextViewerComponent } from '../../shared/rich-text-viewer.component';
 import type { JSONContent } from '@tiptap/core';
 
 const EMBED_PREFIX = 'https://www.youtube-nocookie.com/embed/';
 
+/** Just enough of a video to render the player + description. */
+interface PlayableVideo {
+  title: string;
+  embedUrl: string;
+  descriptionJson: unknown | null;
+  keywords: string[];
+}
+
 /**
  * Public single-video page (TECHNICAL_SPEC.md §5.2, §8.3): embedded YouTube
  * player (privacy-enhanced domain) plus the rendered rich-text description.
- * Resolved by share token; unknown/inactive tokens render a not-found message.
+ *
+ * Two routes resolve here: /v/:token (an individually-shared video) and
+ * /list/:token/v/:videoId (a video reachable through a shared filter list).
+ * Unknown/inactive links render a not-found message.
  */
 @Component({
   selector: 'app-public-video',
   imports: [RouterLink, RichTextViewerComponent],
   template: `
     <div class="mx-auto max-w-3xl p-6">
-      <a routerLink="/videos" class="text-sm text-gray-500 hover:underline">← All videos</a>
+      <a [routerLink]="backLink()" class="text-sm text-gray-500 hover:underline">← Back</a>
 
       @if (loading()) {
         <p class="mt-4 text-gray-500">Loading…</p>
@@ -62,8 +72,10 @@ export class PublicVideoComponent {
   private readonly service = inject(PublicVideoService);
   private readonly sanitizer = inject(DomSanitizer);
 
-  protected readonly video = signal<PublicVideo | null>(null);
+  protected readonly video = signal<PlayableVideo | null>(null);
   protected readonly loading = signal(true);
+
+  private readonly listToken = this.route.snapshot.paramMap.get('listToken');
 
   protected readonly descriptionDoc = computed(
     () => (this.video()?.descriptionJson as JSONContent | null) ?? null,
@@ -76,9 +88,18 @@ export class PublicVideoComponent {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   });
 
+  protected backLink(): unknown[] {
+    return this.listToken ? ['/list', this.listToken] : ['/videos'];
+  }
+
   constructor() {
-    const token = this.route.snapshot.paramMap.get('token')!;
-    this.service.getByToken(token).subscribe({
+    const params = this.route.snapshot.paramMap;
+    // List-scoped: /list/:listToken/v/:videoId  vs  direct: /v/:token
+    const request$ = this.listToken
+      ? this.service.getListVideo(this.listToken, params.get('videoId')!)
+      : this.service.getByToken(params.get('token')!);
+
+    request$.subscribe({
       next: (v) => {
         this.video.set(v);
         this.loading.set(false);

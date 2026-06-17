@@ -13,9 +13,10 @@ import { extractPlainText } from '../lib/tiptap';
 import { randomToken } from '../lib/token';
 import {
   DEFAULT_CRITERIA,
-  queryPublicVideos,
+  getMatchingListVideo,
+  queryAllVideos,
   type FilterCriteria,
-  type PublicVideoDto,
+  type ListVideoDto,
   type ShareInfo,
 } from './videos';
 import type { CreateFilterListInput, UpdateFilterListInput } from '../schemas/filterList';
@@ -37,7 +38,7 @@ export interface PublicFilterListDto {
   name: string;
   descriptionJson: unknown | null;
   criteria: FilterCriteria;
-  videos: PublicVideoDto[];
+  videos: ListVideoDto[];
 }
 
 type ListRow = typeof filterLists.$inferSelect;
@@ -178,21 +179,42 @@ export function unshareFilterList(listId: string): ShareInfo | null {
   return { token: existing.shareToken, active: false };
 }
 
-/** Resolves a shared list by token: its metadata + the videos its criteria match. */
-export function getPublicFilterListByToken(token: string): PublicFilterListDto | null {
-  const row = db
-    .select({ list: filterLists })
-    .from(filterListShares)
-    .innerJoin(filterLists, eq(filterListShares.filterListId, filterLists.id))
-    .where(and(eq(filterListShares.shareToken, token), eq(filterListShares.active, true)))
-    .get();
-  if (!row) return null;
+/** Loads the active filter list for a token (its criteria), or null. */
+function activeListByToken(token: string): { list: typeof filterLists.$inferSelect } | null {
+  return (
+    db
+      .select({ list: filterLists })
+      .from(filterListShares)
+      .innerJoin(filterLists, eq(filterListShares.filterListId, filterLists.id))
+      .where(and(eq(filterListShares.shareToken, token), eq(filterListShares.active, true)))
+      .get() ?? null
+  );
+}
 
+/**
+ * Resolves a shared list by token: its metadata + every video matching its
+ * criteria across the whole library. The list's share link authorizes access to
+ * those videos, so per-video sharing is not required (TECHNICAL_SPEC.md §5.1, §6).
+ */
+export function getPublicFilterListByToken(token: string): PublicFilterListDto | null {
+  const row = activeListByToken(token);
+  if (!row) return null;
   const criteria = JSON.parse(row.list.criteriaJson) as FilterCriteria;
   return {
     name: row.list.name,
     descriptionJson: row.list.descriptionJson ? JSON.parse(row.list.descriptionJson) : null,
     criteria,
-    videos: queryPublicVideos(criteria),
+    videos: queryAllVideos(criteria),
   };
+}
+
+/**
+ * Resolves a single video reachable through a shared list: returned only if the
+ * list is active and the video matches its criteria (TECHNICAL_SPEC.md §5.2).
+ */
+export function getPublicListVideo(token: string, videoId: string): ListVideoDto | null {
+  const row = activeListByToken(token);
+  if (!row) return null;
+  const criteria = JSON.parse(row.list.criteriaJson) as FilterCriteria;
+  return getMatchingListVideo(videoId, criteria);
 }

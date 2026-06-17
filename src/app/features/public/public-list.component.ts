@@ -34,7 +34,7 @@ import type { JSONContent } from '@tiptap/core';
         @if (list()!.videos.length === 0) {
           <p class="text-gray-500">No videos match this list right now.</p>
         } @else {
-          <app-video-grid [videos]="list()!.videos" />
+          <app-video-grid [videos]="list()!.videos" [listToken]="token" />
         }
       }
     </div>
@@ -47,13 +47,14 @@ export class PublicListComponent {
   protected readonly list = signal<PublicFilterList | null>(null);
   protected readonly loading = signal(true);
 
+  protected readonly token = this.route.snapshot.paramMap.get('token')!;
+
   protected readonly descriptionDoc = computed(
     () => (this.list()?.descriptionJson as JSONContent | null) ?? null,
   );
 
   constructor() {
-    const token = this.route.snapshot.paramMap.get('token')!;
-    this.service.getList(token).subscribe({
+    this.service.getList(this.token).subscribe({
       next: (l) => {
         this.list.set(l);
         this.loading.set(false);

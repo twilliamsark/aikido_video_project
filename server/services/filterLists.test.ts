@@ -6,6 +6,9 @@ type Lists = typeof import('./filterLists');
 type Videos = typeof import('./videos');
 let lists: Lists;
 let videos: Videos;
+let omoteId: string;
+let nikyoId: string;
+let ikkyoUraId: string;
 
 // NOTE: Bun runs all test files in one process, so the in-memory DB is shared
 // with videos.test.ts. We use a distinct teacher id and unique data markers
@@ -30,23 +33,23 @@ beforeAll(async () => {
   lists = await import('./filterLists');
   videos = await import('./videos');
 
-  const omote = videos.createVideo('m6-teacher', {
+  omoteId = videos.createVideo('m6-teacher', {
     title: 'M6 Ikkyo Omote',
     youtubeUrl: 'https://youtu.be/m6Omote0001',
     keywords: ['M6tech', 'Omote6'],
-  });
-  const nikyo = videos.createVideo('m6-teacher', {
+  }).id;
+  nikyoId = videos.createVideo('m6-teacher', {
     title: 'M6 Nikyo Ura',
     youtubeUrl: 'https://youtu.be/m6Nikyo0001',
     keywords: ['M6tech', 'Ura6'],
-  });
-  videos.createVideo('m6-teacher', {
+  }).id;
+  ikkyoUraId = videos.createVideo('m6-teacher', {
     title: 'M6 Ikkyo Ura',
     youtubeUrl: 'https://youtu.be/m6IkkyoUra1',
     keywords: ['M6tech', 'Ura6'],
-  }); // intentionally NOT shared
-  videos.shareVideo(omote.id, 'm6-teacher');
-  videos.shareVideo(nikyo.id, 'm6-teacher');
+  }).id; // intentionally NOT individually shared
+  videos.shareVideo(omoteId, 'm6-teacher');
+  videos.shareVideo(nikyoId, 'm6-teacher');
 });
 
 describe('filter list CRUD + sharing', () => {
@@ -67,27 +70,40 @@ describe('filter list CRUD + sharing', () => {
     expect(dto.shared).toBe(false);
   });
 
-  test('updates criteria', () => {
-    const updated = lists.updateFilterList(listId, {
-      criteria: { query: 'm6', keywords: ['Omote6'], sort: { field: 'title', dir: 'asc' } },
-    })!;
-    expect(updated.criteria.keywords).toEqual(['Omote6']);
-  });
-
-  test('shares with a stable token and resolves results by criteria (shared only)', () => {
+  test('shared list resolves over the ENTIRE library, including unshared videos', () => {
     const share = lists.shareFilterList(listId, 'm6-teacher');
     expect(share.token).toHaveLength(22);
 
     const pub = lists.getPublicFilterListByToken(share.token)!;
     expect(pub.name).toBe('Ikkyo techniques');
-    // query "m6" + required keyword "Omote6" over SHARED videos -> only "M6 Ikkyo Omote".
-    expect(pub.videos.map((v) => v.title)).toEqual(['M6 Ikkyo Omote']);
+    // query "m6" matches all three M6 videos — including "M6 Ikkyo Ura", which is
+    // NOT individually shared. Sorted by title asc.
+    expect(pub.videos.map((v) => v.title)).toEqual([
+      'M6 Ikkyo Omote',
+      'M6 Ikkyo Ura',
+      'M6 Nikyo Ura',
+    ]);
+  });
+
+  test('list-scoped playback: a matching video plays, a non-matching one 404s', () => {
+    const token = lists.getFilterList(listId)!.shareToken!;
+    // ikkyoUra is unshared but matches "m6" -> reachable via the list.
+    expect(lists.getPublicListVideo(token, ikkyoUraId)?.title).toBe('M6 Ikkyo Ura');
+
+    // Narrow criteria so only "M6 Ikkyo Omote" matches.
+    lists.updateFilterList(listId, {
+      criteria: { query: 'm6', keywords: ['Omote6'], sort: { field: 'title', dir: 'asc' } },
+    });
+    expect(lists.getPublicListVideo(token, omoteId)?.title).toBe('M6 Ikkyo Omote');
+    // nikyo no longer matches -> not reachable through this list.
+    expect(lists.getPublicListVideo(token, nikyoId)).toBeNull();
   });
 
   test('re-sharing reuses the token; unsharing 404s', () => {
     const token = lists.getFilterList(listId)!.shareToken!;
     lists.unshareFilterList(listId);
     expect(lists.getPublicFilterListByToken(token)).toBeNull();
+    expect(lists.getPublicListVideo(token, omoteId)).toBeNull();
     const reshared = lists.shareFilterList(listId, 'm6-teacher');
     expect(reshared.token).toBe(token);
   });

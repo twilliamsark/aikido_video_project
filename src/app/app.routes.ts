@@ -21,6 +21,11 @@ export const routes: Routes = [
       import('./features/public/public-list.component').then((m) => m.PublicListComponent),
   },
   {
+    path: 'list/:listToken/v/:videoId',
+    loadComponent: () =>
+      import('./features/public/public-video.component').then((m) => m.PublicVideoComponent),
+  },
+  {
     path: 'login',
     loadComponent: () =>
       import('./features/auth/login.component').then((m) => m.LoginComponent),

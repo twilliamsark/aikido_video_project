@@ -82,12 +82,32 @@ export interface FilterListInput {
   criteria: FilterCriteria;
 }
 
-/** Public resolution of a shared filter list. */
+/** A video reachable through a shared filter list (no individual share token). */
+export interface ListVideo {
+  id: string;
+  title: string;
+  youtubeVideoId: string;
+  embedUrl: string;
+  descriptionJson: unknown | null;
+  keywords: string[];
+  createdAt: string;
+}
+
+/** Public resolution of a shared filter list (resolves over the whole library). */
 export interface PublicFilterList {
   name: string;
   descriptionJson: unknown | null;
   criteria: FilterCriteria;
-  videos: PublicVideo[];
+  videos: ListVideo[];
+}
+
+/** Minimal shape the video grid needs; satisfied by PublicVideo and ListVideo. */
+export interface GridVideo {
+  id: string;
+  title: string;
+  youtubeVideoId: string;
+  keywords: string[];
+  shareToken?: string | null;
 }
 
 /** Payload for creating/updating a video. Description is a TipTap JSON document. */
