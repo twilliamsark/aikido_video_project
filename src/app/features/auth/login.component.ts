@@ -83,8 +83,8 @@ export class LoginComponent {
   protected readonly errorMsg = signal<string | null>(null);
 
   protected name = '';
-  protected email = '';
-  protected password = '';
+  protected email = 'admin@dojo.test';
+  protected password = 'changeme123';
 
   toggleMode(): void {
     this.mode.set(this.mode() === 'signin' ? 'signup' : 'signin');

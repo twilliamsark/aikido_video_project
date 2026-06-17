@@ -138,15 +138,17 @@ server enforces it regardless.
 - The header row must contain `name` and `url` columns (case-insensitive).
 - `name` → video title; `url` → `youtube_url` (parsed/validated to a video ID).
 - **Every other column is treated as keywords**: each cell is split on `;`,
-  trimmed, and empty values dropped (so exported keyword cells round-trip).
+  trimmed, and empty values dropped. This means a CSV in the **export format**
+  (`name,url,keywords`) round-trips back in cleanly.
 - Keywords are upserted case-insensitively and deduped (existing canonical casing
   wins).
 - Rows with a missing name or an unparseable YouTube URL are **skipped and
   reported**.
-- **Deduped by YouTube video ID**: rows whose video already exists (in the library
-  or earlier in the same file) are counted as `duplicates` and skipped, so
-  re-importing a file is safe/idempotent.
-- Response: `{ created, skipped, duplicates, errors: [{ row, name, reason }] }`.
+- **Matched by YouTube video ID**: when a row's video already exists (in the
+  library or earlier in the same file), the existing video's keywords are replaced
+  with the **union** of its current and incoming keywords (counted as `merged`);
+  other fields are left unchanged. Re-importing is therefore safe and additive.
+- Response: `{ created, merged, skipped, errors: [{ row, name, reason }] }`.
 
 **Export** — `GET /api/videos/export` → `text/csv` download:
 - Columns: `name,url,keywords` where keywords are `;`-joined (alphabetical).

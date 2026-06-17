@@ -187,18 +187,19 @@ export function deleteVideo(id: string): boolean {
 
 export interface ImportResult {
   created: number;
+  merged: number;
   skipped: number;
-  duplicates: number;
   errors: { row: number; name: string; reason: string }[];
 }
 
-/** True if a video with the given parsed YouTube video ID already exists. */
-function existsByYoutubeId(youtubeVideoId: string): boolean {
-  return !!db
+/** Returns the id of an existing video with the given YouTube video ID, or null. */
+function findIdByYoutubeId(youtubeVideoId: string): string | null {
+  const row = db
     .select({ id: videoEntries.id })
     .from(videoEntries)
     .where(eq(videoEntries.youtubeVideoId, youtubeVideoId))
     .get();
+  return row?.id ?? null;
 }
 
 /**
@@ -207,13 +208,14 @@ function existsByYoutubeId(youtubeVideoId: string): boolean {
  * The header row must contain `name` and `url` columns (case-insensitive). Every
  * other column is treated as keywords: each cell is split on ';' so that values
  * exported by {@link exportVideosToCsv} round-trip. Rows with a missing name or an
- * unparseable YouTube URL are skipped and reported. Rows whose YouTube video ID
- * already exists (in the library or earlier in the same file) are counted as
- * duplicates and skipped.
+ * unparseable YouTube URL are skipped and reported. When a row's YouTube video ID
+ * already exists (in the library or earlier in the same file), the existing
+ * video's keywords are replaced with the **union** of its current keywords and the
+ * incoming ones (counted as `merged`); other fields are left unchanged.
  */
 export function importVideosFromCsv(userId: string, csvText: string): ImportResult {
   const rows = parseCsv(csvText).filter((r) => r.some((c) => c.trim() !== ''));
-  const result: ImportResult = { created: 0, skipped: 0, duplicates: 0, errors: [] };
+  const result: ImportResult = { created: 0, merged: 0, skipped: 0, errors: [] };
   if (rows.length < 2) return result;
 
   const header = rows[0]!.map((h) => h.trim());
@@ -251,9 +253,13 @@ export function importVideosFromCsv(userId: string, csvText: string): ImportResu
       result.errors.push({ row: rowNumber, name, reason: 'Could not parse a YouTube video ID' });
       continue;
     }
-    // Dedupe against existing videos (and earlier rows committed this run).
-    if (existsByYoutubeId(youtubeVideoId)) {
-      result.duplicates++;
+    // If the video already exists (same YouTube ID, here or earlier this run),
+    // merge keywords as a union rather than creating a duplicate.
+    const existingId = findIdByYoutubeId(youtubeVideoId);
+    if (existingId) {
+      const existing = getVideo(existingId)!;
+      updateVideo(existingId, { keywords: [...existing.keywords, ...keywords] });
+      result.merged++;
       continue;
     }
     try {

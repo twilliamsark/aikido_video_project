@@ -10,8 +10,8 @@ export interface Teacher {
 /** Result of a CSV import (TECHNICAL_SPEC.md §3.5). */
 export interface ImportResult {
   created: number;
+  merged: number;
   skipped: number;
-  duplicates: number;
   errors: { row: number; name: string; reason: string }[];
 }
 

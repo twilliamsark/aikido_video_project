@@ -109,7 +109,7 @@ describe('CSV import/export', () => {
     const result = svc.importVideosFromCsv('teacher-1', csv);
     expect(result.created).toBe(2);
     expect(result.skipped).toBe(1);
-    expect(result.duplicates).toBe(0);
+    expect(result.merged).toBe(0);
     expect(result.errors[0]).toMatchObject({ name: 'Bad Row', reason: 'Missing url' });
 
     const imported = svc.listVideos().find((v) => v.title === 'Aihanmi Shihonage')!;
@@ -117,12 +117,32 @@ describe('CSV import/export', () => {
     expect(imported.keywords).toEqual(['Katatedori', 'Shihonage', 'Tiado', 'Ura']);
   });
 
-  test('re-importing the same CSV dedupes by YouTube video ID', () => {
+  test('re-importing an existing video merges keywords as a union (no duplicate)', () => {
     const before = svc.listVideos().length;
-    const result = svc.importVideosFromCsv('teacher-1', csv);
+    // Same URL as "Aihanmi Shihonage" above, but with one new keyword column value.
+    const mergeCsv =
+      'name,extra,url\n' +
+      'Aihanmi Shihonage,Henka,https://www.youtube.com/watch?v=Z-FwOJQi1_c\n';
+    const result = svc.importVideosFromCsv('teacher-1', mergeCsv);
+
     expect(result.created).toBe(0);
-    expect(result.duplicates).toBe(2);
-    expect(svc.listVideos().length).toBe(before); // no new videos created
+    expect(result.merged).toBe(1);
+    expect(svc.listVideos().length).toBe(before); // no new video created
+
+    const merged = svc.listVideos().find((v) => v.title === 'Aihanmi Shihonage')!;
+    // Union of the original keywords and the new "Henka".
+    expect(merged.keywords).toEqual(['Henka', 'Katatedori', 'Shihonage', 'Tiado', 'Ura']);
+  });
+
+  test('imports a CSV in our own export format (name,url,keywords split on ;)', () => {
+    const exportFormat =
+      'name,url,keywords\n' +
+      'Tsuki Kotegaeshi,https://youtu.be/aREff-Q21lI,Gyakuhanmi;Kotegaeshi;Oyo;Tsuki\n';
+    const result = svc.importVideosFromCsv('teacher-1', exportFormat);
+    expect(result.created).toBe(1);
+
+    const imported = svc.listVideos().find((v) => v.title === 'Tsuki Kotegaeshi')!;
+    expect(imported.keywords).toEqual(['Gyakuhanmi', 'Kotegaeshi', 'Oyo', 'Tsuki']);
   });
 
   test('export produces name,url,keywords with ;-joined keywords and round-trips', () => {
@@ -131,8 +151,9 @@ describe('CSV import/export', () => {
     expect(lines[0]).toBe('name,url,keywords');
 
     const row = lines.find((l) => l.startsWith('Aihanmi Shihonage,'))!;
+    // Includes "Henka" merged in by the earlier re-import test.
     expect(row).toBe(
-      'Aihanmi Shihonage,https://www.youtube.com/watch?v=Z-FwOJQi1_c,Katatedori;Shihonage;Tiado;Ura',
+      'Aihanmi Shihonage,https://www.youtube.com/watch?v=Z-FwOJQi1_c,Henka;Katatedori;Shihonage;Tiado;Ura',
     );
   });
 
