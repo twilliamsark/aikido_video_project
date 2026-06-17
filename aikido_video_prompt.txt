@@ -27,6 +27,6 @@ We will provide basic rich text formatting for the video description.
 - Inline code and code snippets
 - Horizontal separator lines
 
-The data will be stored as JSON in a SQLite database.  I'll use Bun's build-in SQLite client with the sequilize library.
+The data will be stored as JSON in a SQLite database.  I'll use Bun's build-in SQLite client with an ORM library.
 
 From this please create me a technical specification document which I can use as a foundatino to then build this application.

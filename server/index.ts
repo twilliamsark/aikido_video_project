@@ -1,29 +1,19 @@
 /**
  * Bun HTTP server entry (TECHNICAL_SPEC.md §3, §7).
  *
- * Mounts better-auth at /api/auth/*, exposes a health check, and reserves the
- * REST surface under /api. Domain route handlers are added in later milestones.
+ * Mounts better-auth at /api/auth/*, exposes a health check, and dispatches the
+ * teacher REST surface to per-resource route handlers. Public (guest) routes are
+ * added in a later milestone.
  */
 import { auth } from './auth';
 import { env } from './env';
+import { error, HttpError, json, withCors } from './lib/http';
+import { handleVideoRoutes } from './routes/videos';
+import { handleKeywordRoutes } from './routes/keywords';
 
-function withCors(res: Response): Response {
-  const headers = new Headers(res.headers);
-  headers.set('Access-Control-Allow-Origin', env.webOrigin);
-  headers.set('Access-Control-Allow-Credentials', 'true');
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
-}
+type RouteHandler = (req: Request, url: URL) => Promise<Response | null>;
 
-function json(data: unknown, status = 200): Response {
-  return withCors(
-    new Response(JSON.stringify(data), {
-      status,
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  );
-}
+const routes: RouteHandler[] = [handleVideoRoutes, handleKeywordRoutes];
 
 const server = Bun.serve({
   port: env.port,
@@ -45,12 +35,23 @@ const server = Bun.serve({
       return withCors(await auth.handler(req));
     }
 
-    // TODO (later milestones): /api/public/*, /api/videos, /api/lists, /api/keywords.
-    if (url.pathname.startsWith('/api/')) {
-      return json({ error: { code: 'not_implemented', message: 'Not implemented yet' } }, 501);
+    try {
+      for (const route of routes) {
+        const res = await route(req, url);
+        if (res) return res;
+      }
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return error(err.code, err.message, err.status);
+      }
+      console.error('Unhandled error:', err);
+      return error('internal_error', 'Something went wrong', 500);
     }
 
-    return json({ error: { code: 'not_found', message: 'Not found' } }, 404);
+    if (url.pathname.startsWith('/api/')) {
+      return error('not_found', 'Not found', 404);
+    }
+    return error('not_found', 'Not found', 404);
   },
 });
 
