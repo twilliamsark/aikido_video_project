@@ -12,7 +12,9 @@
       "Bash(curl -s -m 5 http://localhost:3000/api/health)",
       "Bash(curl -s -m 8 -X POST http://localhost:3000/api/auth/sign-up/email -H \"Content-Type: application/json\" -d '{\"name\":\"Test Teacher\",\"email\":\"teacher@example.com\",\"password\":\"supersecret123\"}' -w \"\\\\n[http %{http_code}]\\\\n\")",
       "Bash(bun test *)",
-      "Bash(bunx tsc *)"
+      "Bash(bunx tsc *)",
+      "Bash(git add *)",
+      "Bash(grep -E \"node_modules|\\\\.sqlite$|/dist/|\\\\.csv$\")"
     ]
   }
 }

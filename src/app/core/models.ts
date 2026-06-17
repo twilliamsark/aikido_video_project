@@ -29,11 +29,11 @@ export interface Video {
   updatedAt: string;
 }
 
-/** Payload for creating/updating a video (milestone 3 uses plaintext description). */
+/** Payload for creating/updating a video. Description is a TipTap JSON document. */
 export interface VideoInput {
   title: string;
   youtubeUrl: string;
-  descriptionText?: string | null;
+  descriptionJson?: unknown | null;
   keywords: string[];
 }
 
