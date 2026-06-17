@@ -13,6 +13,7 @@ import {
   getVideo,
   importVideosFromCsv,
   listVideos,
+  setVideoDisabled,
   shareVideo,
   unshareVideo,
   updateVideo,
@@ -92,6 +93,13 @@ export async function handleVideoRoutes(req: Request, url: URL): Promise<Respons
     }
     const share = unshareVideo(id);
     return json({ share: share ?? { token: null, active: false } });
+  }
+
+  // Takedown: /api/videos/:id/disable | /api/videos/:id/enable
+  if (segments.length === 4 && (segments[3] === 'disable' || segments[3] === 'enable')) {
+    if (req.method !== 'POST') return error('method_not_allowed', `${req.method} not allowed`, 405);
+    const video = setVideoDisabled(id, segments[3] === 'disable');
+    return video ? json({ video }) : error('not_found', 'Video not found', 404);
   }
 
   throw new HttpError(404, 'not_found', 'Not found');

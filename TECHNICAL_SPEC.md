@@ -283,6 +283,11 @@ description.
   link `/v/:token`. Teachers still manage all videos in `/admin`.
 - `/lists` is a public index of all actively-shared filter lists (name, link,
   description).
+- **Takedown kill-switch:** each video has a `disabled` flag. A disabled video is
+  removed from **every** public surface — the catalog, `/watch/:id`, its
+  `/v/:token` vanity link, and all filter lists (both the resolved grid and
+  list-scoped playback) — regardless of sharing. It remains visible in `/admin`
+  so a teacher can re-enable it. Default: enabled.
 
 ### 5.2 Public URLs
 
@@ -370,6 +375,8 @@ actively-shared content.
 | DELETE | `/api/videos/:id` | Delete (cascades keywords join, shares) |
 | POST | `/api/videos/:id/share` | Create or reactivate share → returns token/URL |
 | POST | `/api/videos/:id/unshare` | Set active = 0 |
+| POST | `/api/videos/:id/disable` | Takedown: hide from all public surfaces |
+| POST | `/api/videos/:id/enable` | Restore a disabled video |
 | GET | `/api/keywords` | List/autocomplete keywords |
 | GET | `/api/lists` | List filter lists |
 | POST | `/api/lists` | Create filter list |

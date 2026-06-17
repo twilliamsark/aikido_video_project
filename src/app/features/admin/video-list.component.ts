@@ -86,8 +86,15 @@ import { Video } from '../../core/models';
           </thead>
           <tbody>
             @for (video of videos(); track video.id) {
-              <tr class="border-b border-gray-100">
-                <td class="py-3 pr-4 font-medium text-gray-900">{{ video.title }}</td>
+              <tr class="border-b border-gray-100" [class.opacity-50]="video.disabled">
+                <td class="py-3 pr-4 font-medium text-gray-900">
+                  {{ video.title }}
+                  @if (video.disabled) {
+                    <span class="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      Disabled
+                    </span>
+                  }
+                </td>
                 <td class="py-3 pr-4">
                   <span class="flex flex-wrap gap-1">
                     @for (kw of video.keywords; track kw) {
@@ -121,6 +128,14 @@ import { Video } from '../../core/models';
                     class="text-indigo-600 hover:underline"
                     >Edit</a
                   >
+                  <button
+                    (click)="toggleDisabled(video)"
+                    class="ml-4 hover:underline"
+                    [class.text-amber-700]="!video.disabled"
+                    [class.text-green-700]="video.disabled"
+                  >
+                    {{ video.disabled ? 'Enable' : 'Disable' }}
+                  </button>
                   <button
                     (click)="remove(video)"
                     class="ml-4 text-red-600 hover:underline"
@@ -189,6 +204,18 @@ export class VideoListComponent {
           ),
         ),
       error: () => this.errorMsg.set('Failed to update sharing.'),
+    });
+  }
+
+  toggleDisabled(video: Video): void {
+    const disable = !video.disabled;
+    if (disable && !confirm(`Disable "${video.title}"? It will be removed from the public library and every shared link.`)) {
+      return;
+    }
+    this.videoService.setDisabled(video.id, disable).subscribe({
+      next: (updated) =>
+        this.videos.update((list) => list.map((v) => (v.id === video.id ? updated : v))),
+      error: () => this.errorMsg.set('Failed to update video status.'),
     });
   }
 

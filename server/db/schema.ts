@@ -29,6 +29,8 @@ export const videoEntries = sqliteTable(
     youtubeVideoId: text('youtube_video_id').notNull(),
     descriptionJson: text('description_json'),
     descriptionText: text('description_text'),
+    /** Takedown kill-switch: a disabled video is hidden from ALL public surfaces. */
+    disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
     createdBy: text('created_by')
       .notNull()
       .references(() => user.id),

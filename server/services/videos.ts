@@ -28,6 +28,8 @@ export interface VideoDto {
   shared: boolean;
   /** The (stable) share token, present once a share has ever been created. */
   shareToken: string | null;
+  /** Takedown kill-switch: when true the video is hidden from all public surfaces. */
+  disabled: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -150,6 +152,7 @@ function toDto(row: VideoRow, kw: string[], share: ShareInfo | undefined): Video
     keywords: kw.sort((a, b) => a.localeCompare(b)),
     shared: share?.active ?? false,
     shareToken: share?.token ?? null,
+    disabled: row.disabled,
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -219,6 +222,20 @@ export function updateVideo(id: string, input: UpdateVideoInput): VideoDto | nul
   if (input.keywords !== undefined) {
     setVideoKeywords(id, input.keywords);
   }
+  return getVideo(id);
+}
+
+/**
+ * Sets a video's takedown state (TECHNICAL_SPEC.md §5.1). A disabled video stays
+ * in the teacher admin but is removed from every public surface.
+ */
+export function setVideoDisabled(id: string, disabled: boolean): VideoDto | null {
+  const existing = db.select({ id: videoEntries.id }).from(videoEntries).where(eq(videoEntries.id, id)).get();
+  if (!existing) return null;
+  db.update(videoEntries)
+    .set({ disabled, updatedAt: new Date().toISOString() })
+    .where(eq(videoEntries.id, id))
+    .run();
   return getVideo(id);
 }
 
@@ -411,11 +428,13 @@ export interface PublicListResult {
  */
 export function listPublicVideos(page = 1, pageSize = 24): PublicListResult {
   const offset = (Math.max(1, page) - 1) * pageSize;
-  const total = db.select({ n: sql<number>`count(*)` }).from(videoEntries).get()!.n;
+  const enabled = eq(videoEntries.disabled, false);
+  const total = db.select({ n: sql<number>`count(*)` }).from(videoEntries).where(enabled).get()!.n;
 
   const rows = db
     .select()
     .from(videoEntries)
+    .where(enabled)
     .orderBy(desc(videoEntries.createdAt))
     .limit(pageSize)
     .offset(offset)
@@ -426,10 +445,10 @@ export function listPublicVideos(page = 1, pageSize = 24): PublicListResult {
   return { videos, total, page: Math.max(1, page), pageSize };
 }
 
-/** Resolves any video by id for public viewing (the whole library is public). */
+/** Resolves any enabled video by id for public viewing; null if missing/disabled. */
 export function getPublicVideoById(id: string): ListVideoDto | null {
   const row = db.select().from(videoEntries).where(eq(videoEntries.id, id)).get();
-  if (!row) return null;
+  if (!row || row.disabled) return null;
   return toListDto(row, keywordsByVideo([id]).get(id) ?? []);
 }
 
@@ -439,7 +458,13 @@ export function getPublicVideoByToken(token: string): PublicVideoDto | null {
     .select({ video: videoEntries, token: videoShares.shareToken })
     .from(videoShares)
     .innerJoin(videoEntries, eq(videoShares.videoId, videoEntries.id))
-    .where(and(eq(videoShares.shareToken, token), eq(videoShares.active, true)))
+    .where(
+      and(
+        eq(videoShares.shareToken, token),
+        eq(videoShares.active, true),
+        eq(videoEntries.disabled, false),
+      ),
+    )
     .get();
   if (!row) return null;
   return toPublicDto(row.video, keywordsByVideo([row.video.id]).get(row.video.id) ?? [], row.token);
@@ -520,7 +545,7 @@ export function queryPublicVideos(criteria: FilterCriteria): PublicVideoDto[] {
     .select({ video: videoEntries, token: videoShares.shareToken })
     .from(videoShares)
     .innerJoin(videoEntries, eq(videoShares.videoId, videoEntries.id))
-    .where(eq(videoShares.active, true))
+    .where(and(eq(videoShares.active, true), eq(videoEntries.disabled, false)))
     .all();
 
   const kw = keywordsByVideo(rows.map((r) => r.video.id));
@@ -539,7 +564,7 @@ export function queryPublicVideos(criteria: FilterCriteria): PublicVideoDto[] {
  * authorizes access to the matching videos.
  */
 export function queryAllVideos(criteria: FilterCriteria): ListVideoDto[] {
-  const rows = db.select().from(videoEntries).all();
+  const rows = db.select().from(videoEntries).where(eq(videoEntries.disabled, false)).all();
   const kw = keywordsByVideo(rows.map((r) => r.id));
   const match = buildMatcher(criteria);
   return rows
@@ -554,7 +579,7 @@ export function queryAllVideos(criteria: FilterCriteria): ListVideoDto[] {
  */
 export function getMatchingListVideo(videoId: string, criteria: FilterCriteria): ListVideoDto | null {
   const row = db.select().from(videoEntries).where(eq(videoEntries.id, videoId)).get();
-  if (!row) return null;
+  if (!row || row.disabled) return null;
   const labels = keywordsByVideo([videoId]).get(videoId) ?? [];
   if (!buildMatcher(criteria)(row.title, labels, row.descriptionText)) return null;
   return toListDto(row, labels);

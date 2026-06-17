@@ -220,4 +220,28 @@ describe('sharing & public access', () => {
     expect(result.total).toBeGreaterThanOrEqual(1);
     expect(result.videos.length).toBeLessThanOrEqual(10);
   });
+
+  test('disabling a video removes it from EVERY public surface', () => {
+    // Share it (vanity link) so we can check the token path too.
+    const token = svc.shareVideo(videoId, 'teacher-1').token;
+    expect(svc.getPublicVideoByToken(token)).not.toBeNull();
+
+    svc.setVideoDisabled(videoId, true);
+
+    // Teacher still sees it (so they can re-enable), flagged disabled.
+    expect(svc.getVideo(videoId)!.disabled).toBe(true);
+
+    // ...but it's gone from catalog, watch-by-id, the vanity token, and lists.
+    expect(svc.listPublicVideos().videos.find((v) => v.id === videoId)).toBeUndefined();
+    expect(svc.getPublicVideoById(videoId)).toBeNull();
+    expect(svc.getPublicVideoByToken(token)).toBeNull();
+    const wide = { query: null, keywords: ['share'], sort: { field: 'title' as const, dir: 'asc' as const } };
+    expect(svc.queryAllVideos(wide).find((v) => v.id === videoId)).toBeUndefined();
+    expect(svc.getMatchingListVideo(videoId, wide)).toBeNull();
+
+    // Re-enabling restores it everywhere.
+    svc.setVideoDisabled(videoId, false);
+    expect(svc.getPublicVideoById(videoId)).not.toBeNull();
+    expect(svc.getPublicVideoByToken(token)).not.toBeNull();
+  });
 });

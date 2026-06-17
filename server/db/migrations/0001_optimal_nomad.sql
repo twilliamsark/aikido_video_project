@@ -1,0 +1,1 @@
+ALTER TABLE `video_entries` ADD `disabled` integer DEFAULT false NOT NULL;

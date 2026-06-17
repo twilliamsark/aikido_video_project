@@ -26,6 +26,8 @@ export interface Video {
   keywords: string[];
   shared: boolean;
   shareToken: string | null;
+  /** Takedown kill-switch: when true the video is hidden from all public surfaces. */
+  disabled: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

@@ -61,4 +61,12 @@ export class VideoService {
       .post<{ share: ShareInfo }>(`/api/videos/${id}/unshare`, {})
       .pipe(map((r) => r.share));
   }
+
+  /** Takedown: disable (hide everywhere) or re-enable a video. */
+  setDisabled(id: string, disabled: boolean): Observable<Video> {
+    const action = disabled ? 'disable' : 'enable';
+    return this.http
+      .post<{ video: Video }>(`/api/videos/${id}/${action}`, {})
+      .pipe(map((r) => r.video));
+  }
 }
