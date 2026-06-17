@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PublicVideoService } from '../../core/public-video.service';
 import { RichTextViewerComponent } from '../../shared/rich-text-viewer.component';
+import { PublicHeaderComponent } from '../../shared/public-header.component';
 import type { JSONContent } from '@tiptap/core';
 
 const EMBED_PREFIX = 'https://www.youtube-nocookie.com/embed/';
@@ -25,8 +26,9 @@ interface PlayableVideo {
  */
 @Component({
   selector: 'app-public-video',
-  imports: [RouterLink, RichTextViewerComponent],
+  imports: [RouterLink, RichTextViewerComponent, PublicHeaderComponent],
   template: `
+    <app-public-header />
     <div class="mx-auto max-w-3xl p-6">
       <a [routerLink]="backLink()" class="text-sm text-gray-500 hover:underline">← Back</a>
 

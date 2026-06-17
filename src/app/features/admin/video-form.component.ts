@@ -6,6 +6,7 @@ import { VideoService } from '../../core/video.service';
 import { VideoInput } from '../../core/models';
 import { RichTextEditorComponent } from '../../shared/rich-text-editor.component';
 import { RichTextViewerComponent } from '../../shared/rich-text-viewer.component';
+import { AdminHeaderComponent } from '../../shared/admin-header.component';
 
 /**
  * Create/edit a video entry (TECHNICAL_SPEC.md §8.2, §8.4).
@@ -15,8 +16,9 @@ import { RichTextViewerComponent } from '../../shared/rich-text-viewer.component
  */
 @Component({
   selector: 'app-video-form',
-  imports: [FormsModule, RouterLink, RichTextEditorComponent, RichTextViewerComponent],
+  imports: [FormsModule, RouterLink, RichTextEditorComponent, RichTextViewerComponent, AdminHeaderComponent],
   template: `
+    <app-admin-header />
     <div class="mx-auto max-w-2xl p-6">
       <a routerLink="/admin/videos" class="text-sm text-gray-500 hover:underline">← Back to videos</a>
       <h1 class="mb-6 mt-2 text-2xl font-semibold text-gray-900">

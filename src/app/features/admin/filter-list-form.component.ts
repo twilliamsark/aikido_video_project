@@ -5,12 +5,14 @@ import type { JSONContent } from '@tiptap/core';
 import { FilterListService } from '../../core/filter-list.service';
 import { FilterCriteria, FilterListInput } from '../../core/models';
 import { RichTextEditorComponent } from '../../shared/rich-text-editor.component';
+import { AdminHeaderComponent } from '../../shared/admin-header.component';
 
 /** Create/edit a filter list: name, criteria, and a rich-text description. */
 @Component({
   selector: 'app-filter-list-form',
-  imports: [FormsModule, RouterLink, RichTextEditorComponent],
+  imports: [FormsModule, RouterLink, RichTextEditorComponent, AdminHeaderComponent],
   template: `
+    <app-admin-header />
     <div class="mx-auto max-w-2xl p-6">
       <a routerLink="/admin/lists" class="text-sm text-gray-500 hover:underline">← Back to lists</a>
       <h1 class="mb-6 mt-2 text-2xl font-semibold text-gray-900">

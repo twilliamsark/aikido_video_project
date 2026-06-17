@@ -1,9 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { PublicVideoService } from '../../core/public-video.service';
-import { AuthService } from '../../core/auth.service';
 import { ListVideo } from '../../core/models';
 import { VideoGridComponent } from '../../shared/video-grid.component';
+import { PublicHeaderComponent } from '../../shared/public-header.component';
 
 /**
  * Public catalog of actively-shared videos (TECHNICAL_SPEC.md §5.1, §6).
@@ -12,20 +11,11 @@ import { VideoGridComponent } from '../../shared/video-grid.component';
  */
 @Component({
   selector: 'app-public-video-list',
-  imports: [RouterLink, VideoGridComponent],
+  imports: [VideoGridComponent, PublicHeaderComponent],
   template: `
+    <app-public-header />
     <div class="mx-auto max-w-5xl p-6">
-      <header class="mb-6 flex items-center justify-between">
-        <h1 class="text-2xl font-semibold text-gray-900">Aikido Video Library</h1>
-        <div class="flex items-center gap-4 text-sm">
-          <a routerLink="/lists" class="text-indigo-600 hover:underline">Browse lists</a>
-          @if (auth.isAuthenticated()) {
-            <a routerLink="/admin/videos" class="text-gray-500 hover:underline">Admin</a>
-          } @else {
-            <a routerLink="/login" class="text-gray-500 hover:underline">Teacher sign in</a>
-          }
-        </div>
-      </header>
+      <h1 class="mb-6 text-2xl font-semibold text-gray-900">All videos</h1>
 
       @if (loading()) {
         <p class="text-gray-500">Loading…</p>
@@ -59,7 +49,6 @@ import { VideoGridComponent } from '../../shared/video-grid.component';
 })
 export class PublicVideoListComponent {
   private readonly service = inject(PublicVideoService);
-  protected readonly auth = inject(AuthService);
 
   protected readonly videos = signal<ListVideo[]>([]);
   protected readonly total = signal(0);
@@ -73,8 +62,6 @@ export class PublicVideoListComponent {
 
   constructor() {
     this.load(1);
-    // Detect an existing teacher session so the header can offer an Admin link.
-    void this.auth.ensureLoaded();
   }
 
   protected go(page: number): void {

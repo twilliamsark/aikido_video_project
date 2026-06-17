@@ -5,21 +5,17 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { VideoService } from '../../core/video.service';
 import { Video } from '../../core/models';
+import { AdminHeaderComponent } from '../../shared/admin-header.component';
 
 /** Admin video table: list, edit, delete, new (TECHNICAL_SPEC.md §8.2). */
 @Component({
   selector: 'app-video-list',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, AdminHeaderComponent],
   template: `
+    <app-admin-header />
     <div class="mx-auto max-w-4xl p-6">
       <header class="mb-6 flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-semibold text-gray-900">Videos</h1>
-          <p class="text-sm text-gray-500">
-            Signed in as {{ auth.user()?.email }} ·
-            <a routerLink="/admin/lists" class="text-indigo-600 hover:underline">Filter lists</a>
-          </p>
-        </div>
+        <h1 class="text-2xl font-semibold text-gray-900">Videos</h1>
         <div class="flex items-center gap-3">
           @if (auth.isAdmin()) {
             <button
@@ -49,12 +45,6 @@ import { Video } from '../../core/models';
           >
             + New video
           </a>
-          <button
-            (click)="signOut()"
-            class="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            Sign out
-          </button>
         </div>
       </header>
 
@@ -267,10 +257,5 @@ export class VideoListComponent {
       },
       error: () => this.errorMsg.set('Export failed.'),
     });
-  }
-
-  async signOut(): Promise<void> {
-    await this.auth.signOut();
-    location.href = '/login';
   }
 }

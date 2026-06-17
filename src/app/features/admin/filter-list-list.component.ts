@@ -3,18 +3,17 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FilterListService } from '../../core/filter-list.service';
 import { FilterList } from '../../core/models';
+import { AdminHeaderComponent } from '../../shared/admin-header.component';
 
 /** Admin management of filter lists (TECHNICAL_SPEC.md §8.2). */
 @Component({
   selector: 'app-filter-list-list',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, AdminHeaderComponent],
   template: `
+    <app-admin-header />
     <div class="mx-auto max-w-4xl p-6">
       <header class="mb-6 flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-semibold text-gray-900">Filter lists</h1>
-          <a routerLink="/admin/videos" class="text-sm text-indigo-600 hover:underline">← Videos</a>
-        </div>
+        <h1 class="text-2xl font-semibold text-gray-900">Filter lists</h1>
         <a
           routerLink="/admin/lists/new"
           class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"

@@ -1,9 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { PublicVideoService } from '../../core/public-video.service';
 import { PublicFilterList } from '../../core/models';
 import { RichTextViewerComponent } from '../../shared/rich-text-viewer.component';
 import { VideoGridComponent } from '../../shared/video-grid.component';
+import { PublicHeaderComponent } from '../../shared/public-header.component';
 import type { JSONContent } from '@tiptap/core';
 
 /**
@@ -12,11 +13,10 @@ import type { JSONContent } from '@tiptap/core';
  */
 @Component({
   selector: 'app-public-list',
-  imports: [RouterLink, RichTextViewerComponent, VideoGridComponent],
+  imports: [RichTextViewerComponent, VideoGridComponent, PublicHeaderComponent],
   template: `
+    <app-public-header />
     <div class="mx-auto max-w-5xl p-6">
-      <a routerLink="/videos" class="text-sm text-gray-500 hover:underline">← All videos</a>
-
       @if (loading()) {
         <p class="mt-4 text-gray-500">Loading…</p>
       } @else if (!list()) {

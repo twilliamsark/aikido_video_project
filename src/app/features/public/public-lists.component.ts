@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { PublicVideoService } from '../../core/public-video.service';
 import { PublicListSummary } from '../../core/models';
 import { RichTextViewerComponent } from '../../shared/rich-text-viewer.component';
+import { PublicHeaderComponent } from '../../shared/public-header.component';
 import type { JSONContent } from '@tiptap/core';
 
 /**
@@ -11,13 +12,11 @@ import type { JSONContent } from '@tiptap/core';
  */
 @Component({
   selector: 'app-public-lists',
-  imports: [RouterLink, RichTextViewerComponent],
+  imports: [RouterLink, RichTextViewerComponent, PublicHeaderComponent],
   template: `
+    <app-public-header />
     <div class="mx-auto max-w-4xl p-6">
-      <header class="mb-6 flex items-center justify-between">
-        <h1 class="text-2xl font-semibold text-gray-900">Video lists</h1>
-        <a routerLink="/videos" class="text-sm text-indigo-600 hover:underline">All videos →</a>
-      </header>
+      <h1 class="mb-6 text-2xl font-semibold text-gray-900">Video lists</h1>
 
       @if (loading()) {
         <p class="text-gray-500">Loading…</p>
